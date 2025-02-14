@@ -1,5 +1,5 @@
 container_rootfs/*
-|container_rootfs/.gitkeep
+!container_rootfs/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
