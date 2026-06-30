@@ -23,10 +23,11 @@ jobs:
 
       - name: Check Python syntax (py_compile)
         run: |
-          files=$(find . -name "*.py" -not -path "./.git/*")
+          files=$(find . -name "*.py" -not -path "./.git/*" -print -quit)
           if [ -z "$files" ]; then
             echo "No Python files found — skipping."
             exit 0
           fi
-          echo "$files" | xargs python -m py_compile
+          find . -name "*.py" -not -path "./.git/*" -print0 \
+            | xargs -0 python -m py_compile
           echo "All Python files passed syntax check."

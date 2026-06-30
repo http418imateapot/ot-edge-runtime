@@ -26,10 +26,11 @@ jobs:
 
       - name: Check SQL syntax (sqlfluff parse)
         run: |
-          files=$(find . -name "*.sql" -not -path "./.git/*")
+          files=$(find . -name "*.sql" -not -path "./.git/*" -print -quit)
           if [ -z "$files" ]; then
             echo "No SQL files found — skipping."
             exit 0
           fi
-          echo "$files" | xargs sqlfluff parse --dialect ansi
+          find . -name "*.sql" -not -path "./.git/*" -print0 \
+            | xargs -0 sqlfluff parse --dialect ansi
           echo "All SQL files passed syntax check."
