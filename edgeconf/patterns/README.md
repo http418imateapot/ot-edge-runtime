@@ -1,5 +1,9 @@
 # Linux-based Robust-Config-Exchange
 
+[![Build](https://github.com/http418imateapot/robust-config-exchange/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/robust-config-exchange/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/http418imateapot/robust-config-exchange)](https://github.com/http418imateapot/robust-config-exchange/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ---
 
 ## 簡介
@@ -76,8 +80,8 @@ make clean
 ```shell
 Usage: ./robust_config <mode>
   mode: write      - Write a log entry
-        watch      - Watch log file and send DBus signals on changes
-        dashboard  - Receive DBus signals and print log messages
+        watch      - Watch log file and send IPC signals on changes
+        dashboard  - Receive IPC signals and print log messages
 ```
 
 ---
@@ -91,7 +95,7 @@ Usage: ./robust_config <mode>
 ./robust_config watch
 ```
 
-監控 Log D-Bus:
+監控 Log IPC:
 ```bash
 ./robust_config dashboard
 ```
@@ -108,13 +112,13 @@ Usage: ./robust_config <mode>
 監控 Log 檔案:
 ```plaintext
 Monitoring logs/log.txt for changes...
-Sent DBus signal with log: Log entry at Sun Feb  9 09:51:41 2025
+Sent IPC signal with log: Log entry at Sun Feb  9 09:51:41 2025
 Log entry at Sun Feb  9 09:52:05 2025
 ```
 
-監控 Log D-Bus:
+監控 Log IPC:
 ```plaintext
-Listening for D-Bus signals...
+Listening for IPC signals...
 Received message: Log entry at Sun Feb  9 09:51:41 2025
 Log entry at Sun Feb  9 09:52:05 2025
 ```

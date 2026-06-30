@@ -7,20 +7,17 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-#include <dbus/dbus.h>
 #include <execinfo.h>   // For obtaining backtrace
 #include <fcntl.h>      // For open() and O_RDONLY
 #include <sys/file.h>   // For flock()
 #include <sys/inotify.h> // For inotify API
 
+#include "ipc_backend.h"
+
 #define TIME_BUF_SIZE 26
 #define LOG_DIR "./logs"
 #define LOG_FILE "logs/log.txt"
 #define BUFFER_SIZE 1024
-
-#define OBJECT_PATH "/com/example/LogWatcher"
-#define INTERFACE_NAME "com.example.LogWatcher"
-#define SIGNAL_NAME "NewLog"
 
 /* ----------------------------------------------------
  * Crash handler: Catches fatal signals using sigaction,
@@ -51,8 +48,8 @@ void crash_handler(int sig, siginfo_t *info, void *ucontext) {
 void print_usage(const char *prog_name) {
     printf("Usage: %s <mode>\n", prog_name);
     printf("  mode: write      - Write a log entry\n");
-    printf("        watch      - Watch log file and send DBus signals on changes\n");
-    printf("        dashboard  - Receive DBus signals and print log messages\n");
+    printf("        watch      - Watch log file and send IPC signals on changes\n");
+    printf("        dashboard  - Receive IPC signals and print log messages\n");
 }
 
 /* ----------------------------------------------------
@@ -130,55 +127,19 @@ int safe_read_log(char *content, size_t content_size) {
 }
 
 /* ----------------------------------------------------
- * Function to send a D-Bus signal.
- * ----------------------------------------------------
- */
-void send_dbus_signal(const char *log_message) {
-    DBusError err;
-    dbus_error_init(&err);
-
-    /* Connect to the session bus (use DBUS_BUS_SYSTEM if needed) */
-    DBusConnection *conn = dbus_bus_get(DBUS_BUS_SESSION, &err);
-    if (dbus_error_is_set(&err)) {
-        fprintf(stderr, "DBus Connection Error: %s\n", err.message);
-        dbus_error_free(&err);
-        return;
-    }
-    if (conn == NULL) {
-        fprintf(stderr, "DBus connection is NULL\n");
-        return;
-    }
-
-    /* Create a signal message */
-    DBusMessage *msg = dbus_message_new_signal(OBJECT_PATH, INTERFACE_NAME, SIGNAL_NAME);
-    if (msg == NULL) {
-        fprintf(stderr, "Failed to create DBus message\n");
-        return;
-    }
-    /* Append log_message as an argument */
-    if (!dbus_message_append_args(msg, DBUS_TYPE_STRING, &log_message, DBUS_TYPE_INVALID)) {
-        fprintf(stderr, "Failed to append arguments to DBus message\n");
-        dbus_message_unref(msg);
-        return;
-    }
-    /* Send the message */
-    if (!dbus_connection_send(conn, msg, NULL)) {
-        fprintf(stderr, "Failed to send DBus message: Out Of Memory\n");
-    }
-    dbus_connection_flush(conn);
-    dbus_message_unref(msg);
-    printf("Sent DBus signal with log: %s\n", log_message);
-}
-
-/* ----------------------------------------------------
  * Function to monitor log file changes (watch mode).
- * Uses inotify to receive file change events.
+ * Uses inotify to receive file change events and
+ * forwards each change via the IPC back-end.
  * ----------------------------------------------------
  */
 int watch_log() {
+    if (ipc_init() != 0)
+        return EXIT_FAILURE;
+
     int inotify_fd = inotify_init();
     if (inotify_fd < 0) {
         perror("Failed to initialize inotify");
+        ipc_cleanup();
         return EXIT_FAILURE;
     }
 
@@ -186,6 +147,7 @@ int watch_log() {
     if (wd < 0) {
         perror("Failed to add inotify watch");
         close(inotify_fd);
+        ipc_cleanup();
         return EXIT_FAILURE;
     }
 
@@ -203,7 +165,7 @@ int watch_log() {
         if (event->mask & IN_MODIFY) {
             char content[BUFFER_SIZE] = {0};
             if (safe_read_log(content, sizeof(content)) == 0) {
-                send_dbus_signal(content);
+                ipc_send_signal(content);
             } else {
                 fprintf(stderr, "Failed to safely read log file\n");
             }
@@ -212,61 +174,31 @@ int watch_log() {
 
     inotify_rm_watch(inotify_fd, wd);
     close(inotify_fd);
+    ipc_cleanup();
     return EXIT_SUCCESS;
 }
 
 /* ----------------------------------------------------
- * Function to receive and print D-Bus messages (dashboard mode).
+ * Callback invoked by ipc_listen() for each received
+ * IPC message (dashboard mode).
+ * ----------------------------------------------------
+ */
+static void on_message(const char *message) {
+    printf("Received message: %s\n", message);
+}
+
+/* ----------------------------------------------------
+ * Function to receive IPC messages (dashboard mode).
  * ----------------------------------------------------
  */
 int dashboard() {
-    DBusError err;
-    dbus_error_init(&err);
-    DBusConnection *conn = dbus_bus_get(DBUS_BUS_SESSION, &err);
-    if (dbus_error_is_set(&err)) {
-        fprintf(stderr, "DBus Connection Error: %s\n", err.message);
-        dbus_error_free(&err);
+    if (ipc_init() != 0)
         return EXIT_FAILURE;
-    }
-    if (conn == NULL) {
-        fprintf(stderr, "DBus connection is NULL\n");
-        return EXIT_FAILURE;
-    }
 
-    char match_rule[256];
-    snprintf(match_rule, sizeof(match_rule),
-             "type='signal',interface='%s',member='%s'",
-             INTERFACE_NAME, SIGNAL_NAME);
-    dbus_bus_add_match(conn, match_rule, &err);
-    dbus_connection_flush(conn);
-    if (dbus_error_is_set(&err)) {
-        fprintf(stderr, "DBus Add Match Error: %s\n", err.message);
-        dbus_error_free(&err);
-        return EXIT_FAILURE;
-    }
+    int ret = ipc_listen(on_message);
 
-    printf("Listening for D-Bus signals...\n");
-
-    while (1) {
-        dbus_connection_read_write(conn, 0);
-        DBusMessage *msg = dbus_connection_pop_message(conn);
-        if (msg == NULL) {
-            usleep(100000);  // Sleep for 100ms
-            continue;
-        }
-
-        if (dbus_message_is_signal(msg, INTERFACE_NAME, SIGNAL_NAME)) {
-            const char *received_msg;
-            if (dbus_message_get_args(msg, &err, DBUS_TYPE_STRING, &received_msg, DBUS_TYPE_INVALID)) {
-                printf("Received message: %s\n", received_msg);
-            } else {
-                fprintf(stderr, "Failed to get message arguments: %s\n", err.message);
-                dbus_error_free(&err);
-            }
-        }
-        dbus_message_unref(msg);
-    }
-    return EXIT_SUCCESS;
+    ipc_cleanup();
+    return (ret == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 /* ----------------------------------------------------
