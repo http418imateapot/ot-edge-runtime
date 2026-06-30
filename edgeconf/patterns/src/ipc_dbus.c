@@ -135,5 +135,5 @@ int ipc_listen(ipc_message_handler_t handler) {
         }
         dbus_message_unref(msg);
     }
-    return 0; /* unreachable */
+    return 0;
 }

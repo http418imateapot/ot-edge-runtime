@@ -88,6 +88,7 @@ int ipc_send_signal(const char *message) {
         return -1;
     }
 
+    /* blob_buf_init() fully initialises b; zero-init guards against padding bytes */
     struct blob_buf b = {};
     blob_buf_init(&b, 0);
     blobmsg_add_string(&b, UBUS_MSG_FIELD, message);

@@ -13,6 +13,9 @@ SRCDIR = src
 OBJDIR = obj
 TARGET = robust_config
 
+# Supported values: dbus (default, requires libdbus-1-dev)
+#                   ubus (requires libubus-dev libubox-dev, OpenWrt or compatible)
+# Any other value falls through to the dbus path.
 IPC_BACKEND ?= dbus
 
 ifeq ($(IPC_BACKEND),ubus)
