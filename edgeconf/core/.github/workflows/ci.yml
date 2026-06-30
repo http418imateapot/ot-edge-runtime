@@ -88,7 +88,7 @@ jobs:
       - name: Verify binary architecture
         run: |
           file build-arm/robust_cfg_tool | grep -q "aarch64"
-          file build-arm/librobustcfg.a  | grep -q "aarch64"
+          aarch64-linux-gnu-objdump -f build-arm/librobustcfg.a | grep -q "architecture: aarch64"
 
   # ---------------------------------------------------------------- #
   # Static analysis with cppcheck                                     #
