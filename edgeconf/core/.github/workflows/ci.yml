@@ -13,6 +13,8 @@ jobs:
   build-and-test:
     name: Build & Test (${{ matrix.sanitizer }})
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
 
     strategy:
       fail-fast: false
@@ -58,6 +60,8 @@ jobs:
   cross-compile-aarch64:
     name: Cross-compile aarch64
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
