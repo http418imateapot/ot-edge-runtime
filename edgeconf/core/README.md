@@ -1,5 +1,10 @@
 # Linux-based Robust-Binary-Config
 
+[![CI](https://github.com/http418imateapot/robust-binary-config/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/http418imateapot/robust-binary-config/actions/workflows/codeql.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/http418imateapot/robust-binary-config?include_prereleases)](https://github.com/http418imateapot/robust-binary-config/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **適用 Linux 邊緣裝置的輕量嵌入式 Key-Value 設定引擎**
 
 進階版的 [robust-config-exchange](https://github.com/http418imateapot/robust-config-exchange) 專案。填補「SQLite 太重、純文字檔太脆」之間的空隙，專為工廠自動化閘道器、AIoT 感測器集線器、邊緣運算節點等場景設計。
