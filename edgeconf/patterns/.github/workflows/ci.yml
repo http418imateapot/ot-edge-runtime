@@ -1,0 +1,32 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["v*"]   # release.yml handles tag builds
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y build-essential pkg-config libdbus-1-dev cppcheck
+
+      - name: Compile (D-Bus backend)
+        run: make IPC_BACKEND=dbus
+
+      - name: Static analysis (cppcheck)
+        run: |
+          cppcheck --error-exitcode=1 \
+                   --enable=warning,portability \
+                   --suppress=missingIncludeSystem \
+                   -I include \
+                   src/robust_config.c src/ipc_dbus.c src/ipc_ubus.c
