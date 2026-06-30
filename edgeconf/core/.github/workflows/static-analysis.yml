@@ -25,7 +25,7 @@ jobs:
         run: |
           cppcheck \
             --error-exitcode=1 \
-            --enable=warning,performance,portability \
+            --enable=warning,style,performance,portability \
             --std=c11 \
             --suppress=missingIncludeSystem \
             -I include \

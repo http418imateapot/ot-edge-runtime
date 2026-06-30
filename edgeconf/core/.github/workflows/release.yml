@@ -42,4 +42,6 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "v${VERSION}" \
             --generate-notes \
-            "robust-binary-config-${VERSION}.tar.gz"
+            "robust-binary-config-${VERSION}.tar.gz" \
+            "build/robust_cfg_tool" \
+            "build/librobustcfg.a"
