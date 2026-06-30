@@ -1,3 +1,9 @@
+# Build directories
+build/
+build-*/
+obj/
+
+# Config data files
 config.bin
 
 # Prerequisites
@@ -38,6 +44,10 @@ config.bin
 *.x86_64
 *.hex
 
+# Binary output produced by this project
+robust_bin_config
+robust_cfg_tool
+
 # Debug files
 *.dSYM/
 *.su
@@ -52,3 +62,4 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+

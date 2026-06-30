@@ -1,22 +1,25 @@
-CC := gcc
-CFLAGS := -Wall -Wextra -O2
-SRCDIR = src
-OBJDIR = obj
-TARGET = robust_bin_config
+# Linux-based Robust-Binary-Config
+# ==================================
+# 適用 Linux 邊緣裝置的輕量嵌入式 Key-Value 設定引擎
+# 填補「SQLite 太重、純文字檔太脆」之間的空隙
+#
+# Wraps CMake for convenience. All real build logic is in CMakeLists.txt.
 
-.PHONY: all clean
+BUILD_DIR  ?= build
+CMAKE_ARGS ?=
 
-all: $(TARGET)
+.PHONY: all clean test install
 
-$(TARGET): $(OBJDIR)/robust_bin_config.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+all:
+	cmake -B $(BUILD_DIR) -DBUILD_TESTING=ON $(CMAKE_ARGS)
+	cmake --build $(BUILD_DIR) --parallel
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
+test: all
+	ctest --test-dir $(BUILD_DIR) --output-on-failure
 
 clean:
-	rm -rf $(OBJDIR) $(TARGET)
+	rm -rf $(BUILD_DIR)
+
+install: all
+	cmake --install $(BUILD_DIR)
 
