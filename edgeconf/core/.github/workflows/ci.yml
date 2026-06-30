@@ -70,7 +70,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
-            cmake gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+            cmake gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
+            libc6-dev-arm64-cross
 
       - name: Configure for aarch64
         run: |
