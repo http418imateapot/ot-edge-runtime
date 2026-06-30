@@ -88,31 +88,4 @@ jobs:
       - name: Verify binary architecture
         run: |
           file build-arm/robust_cfg_tool | grep -q "aarch64"
-          aarch64-linux-gnu-objdump -f build-arm/librobustcfg.a | grep -q "architecture: aarch64"
-
-  # ---------------------------------------------------------------- #
-  # Static analysis with cppcheck                                     #
-  # ---------------------------------------------------------------- #
-  static-analysis:
-    name: Static Analysis (cppcheck)
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install cppcheck
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends cppcheck
-
-      - name: Run cppcheck
-        run: |
-          cppcheck \
-            --enable=warning,style,performance,portability \
-            --std=c11 \
-            --error-exitcode=1 \
-            --suppress=missingIncludeSystem \
-            -I include \
-            src/ tests/
+          aarch64-linux-gnu-objdump -f build-arm/librobustcfg.a | grep -q "aarch64"

@@ -1,8 +1,10 @@
 # Linux-based Robust-Binary-Config
 
 [![CI](https://github.com/http418imateapot/robust-binary-config/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/http418imateapot/robust-binary-config/actions/workflows/codeql.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/codeql.yml)
-[![Release](https://img.shields.io/github/v/release/http418imateapot/robust-binary-config?include_prereleases)](https://github.com/http418imateapot/robust-binary-config/releases)
+[![Static Analysis](https://github.com/http418imateapot/robust-binary-config/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/static-analysis.yml)
+[![Python Syntax](https://github.com/http418imateapot/robust-binary-config/actions/workflows/python-syntax.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/python-syntax.yml)
+[![SQL Syntax](https://github.com/http418imateapot/robust-binary-config/actions/workflows/sql-syntax.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/sql-syntax.yml)
+[![Release](https://img.shields.io/github/v/release/http418imateapot/robust-binary-config)](https://github.com/http418imateapot/robust-binary-config/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **適用 Linux 邊緣裝置的輕量嵌入式 Key-Value 設定引擎**

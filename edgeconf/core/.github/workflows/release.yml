@@ -3,17 +3,14 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v[0-9]*.[0-9]*.[0-9]*'
 
 jobs:
-  # ---------------------------------------------------------------- #
-  # Build native x86_64 binary                                        #
-  # ---------------------------------------------------------------- #
-  build-x86_64:
-    name: Build x86_64
+  release:
+    name: Create Release
     runs-on: ubuntu-22.04
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -24,83 +21,27 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake
 
-      - name: Build (Release)
+      - name: Build release binary
         run: |
-          cmake -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_TESTING=OFF
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
           cmake --build build --parallel $(nproc)
 
-      - name: Package
+      - name: Package source archive
         run: |
-          tar -czf robust-binary-config-${{ github.ref_name }}-linux-x86_64.tar.gz \
-            -C build robust_cfg_tool librobustcfg.a \
-            -C .. include/robust_cfg.h README.md LICENSE
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: x86_64
-          path: robust-binary-config-${{ github.ref_name }}-linux-x86_64.tar.gz
-
-  # ---------------------------------------------------------------- #
-  # Cross-compile aarch64 binary                                      #
-  # ---------------------------------------------------------------- #
-  build-aarch64:
-    name: Build aarch64
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install cross-compiler
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            cmake gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
-
-      - name: Build (Release, aarch64)
-        run: |
-          cmake -B build-arm \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_TESTING=OFF
-          cmake --build build-arm --parallel $(nproc)
-
-      - name: Package
-        run: |
-          tar -czf robust-binary-config-${{ github.ref_name }}-linux-aarch64.tar.gz \
-            -C build-arm robust_cfg_tool librobustcfg.a \
-            -C .. include/robust_cfg.h README.md LICENSE
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: aarch64
-          path: robust-binary-config-${{ github.ref_name }}-linux-aarch64.tar.gz
-
-  # ---------------------------------------------------------------- #
-  # Publish GitHub Release                                            #
-  # ---------------------------------------------------------------- #
-  publish:
-    name: Publish Release
-    needs: [build-x86_64, build-aarch64]
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
+          VERSION="${GITHUB_REF_NAME#v}"
+          git archive --format=tar.gz \
+            --prefix="robust-binary-config-${VERSION}/" \
+            -o "robust-binary-config-${VERSION}.tar.gz" \
+            HEAD
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: dist/*.tar.gz
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            --title "v${VERSION}" \
+            --generate-notes \
+            "robust-binary-config-${VERSION}.tar.gz" \
+            "build/robust_cfg_tool" \
+            "build/librobustcfg.a"
