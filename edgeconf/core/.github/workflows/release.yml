@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write   # needed to create GitHub Releases and upload assets
+
+jobs:
+  # ---------------------------------------------------------------- #
+  # Build CPack packages on Linux (x86_64)                           #
+  # ---------------------------------------------------------------- #
+  build-packages:
+    name: Build packages (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake rpm
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX=/usr
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Package (CPack)
+        working-directory: build
+        run: cpack -G "TGZ;DEB;RPM"
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.os }}
+          path: build/robustcfg-*
+          retention-days: 7
+
+  # ---------------------------------------------------------------- #
+  # Cross-compile aarch64 tarball                                    #
+  # ---------------------------------------------------------------- #
+  build-aarch64:
+    name: Build aarch64 package
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cross-compiler
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
+      - name: Configure for aarch64
+        run: |
+          cmake -B build-arm \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX=/usr
+
+      - name: Build
+        run: cmake --build build-arm --parallel $(nproc)
+
+      - name: Package (CPack TGZ only)
+        working-directory: build-arm
+        run: cpack -G TGZ
+
+      - name: Upload aarch64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-aarch64
+          path: build-arm/robustcfg-*
+          retention-days: 7
+
+  # ---------------------------------------------------------------- #
+  # Source archive                                                    #
+  # ---------------------------------------------------------------- #
+  source-archive:
+    name: Source archive
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends cmake
+
+      - name: Configure (source packaging only)
+        run: cmake -B build -DBUILD_TESTING=OFF
+
+      - name: Generate source archive
+        working-directory: build
+        run: cpack --config CPackSourceConfig.cmake -G "TGZ;ZIP"
+
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-archives
+          path: build/robustcfg-*-source*
+          retention-days: 7
+
+  # ---------------------------------------------------------------- #
+  # Publish GitHub Release                                            #
+  # ---------------------------------------------------------------- #
+  release:
+    name: Publish GitHub Release
+    needs: [build-packages, build-aarch64, source-archive]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: List artifacts
+        run: find dist -type f | sort
+
+      - name: Extract changelog for this release
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Extract the block between this version header and the next one
+          awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" \
+            CHANGELOG.md > release_notes.md
+          echo "Release notes:"
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "v${{ github.ref_name }}"
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            dist/**/*

@@ -1,5 +1,10 @@
 # Linux-based Robust-Binary-Config
 
+[![CI](https://github.com/http418imateapot/robust-binary-config/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/ci.yml)
+[![Release](https://github.com/http418imateapot/robust-binary-config/actions/workflows/release.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/http418imateapot/robust-binary-config)](https://github.com/http418imateapot/robust-binary-config/releases/latest)
+
 **適用 Linux 邊緣裝置的輕量嵌入式 Key-Value 設定引擎**
 
 進階版的 [robust-config-exchange](https://github.com/http418imateapot/robust-config-exchange) 專案。填補「SQLite 太重、純文字檔太脆」之間的空隙，專為工廠自動化閘道器、AIoT 感測器集線器、邊緣運算節點等場景設計。
@@ -73,7 +78,41 @@ ctest --test-dir build --output-on-failure
 make test
 ```
 
-### 5. 清理
+### 5. 系統安裝（可選）
+
+```bash
+# 安裝到 /usr/local（預設）
+cmake --install build
+
+# 或指定安裝路徑
+cmake --install build --prefix /usr
+```
+
+安裝後，其他 CMake 專案可透過 `find_package(robustcfg)` 直接使用本函式庫（詳見下方「在 C 程式中使用」）。
+
+### 6. 使用預建二進制套件安裝
+
+從 [GitHub Releases](https://github.com/http418imateapot/robust-binary-config/releases/latest) 下載對應平台套件：
+
+| 平台 | 套件類型 | 檔案 |
+|------|---------|------|
+| Ubuntu / Debian (x86_64) | `.deb` | `robustcfg-X.Y.Z-Linux-x86_64.deb` |
+| RHEL / Fedora (x86_64) | `.rpm` | `robustcfg-X.Y.Z-Linux-x86_64.rpm` |
+| 通用 Linux (x86_64) | `.tar.gz` | `robustcfg-X.Y.Z-Linux-x86_64.tar.gz` |
+| aarch64 (Raspberry Pi / i.MX8) | `.tar.gz` | `robustcfg-X.Y.Z-Linux-aarch64.tar.gz` |
+
+```bash
+# Debian / Ubuntu
+sudo dpkg -i robustcfg-*.deb
+
+# RHEL / Fedora
+sudo rpm -i robustcfg-*.rpm
+
+# 通用 tarball（解壓到 /usr/local）
+sudo tar -xzf robustcfg-*-Linux-*.tar.gz -C /usr/local --strip-components=1
+```
+
+### 7. 清理
 
 ```bash
 make clean
@@ -170,7 +209,27 @@ robust_cfg_compact(h);  // 回收空間
 robust_cfg_close(h);
 ```
 
-與 CMake 專案整合：
+與 CMake 專案整合（系統安裝後）：
+
+```cmake
+find_package(robustcfg REQUIRED)
+target_link_libraries(my_daemon PRIVATE robustcfg::robustcfg)
+```
+
+或使用 `FetchContent` 直接整合原始碼（免安裝）：
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+    robustcfg
+    GIT_REPOSITORY https://github.com/http418imateapot/robust-binary-config.git
+    GIT_TAG        v1.0.0
+)
+FetchContent_MakeAvailable(robustcfg)
+target_link_libraries(my_daemon PRIVATE robustcfg::robustcfg)
+```
+
+或手動指定路徑（使用 tarball 解壓後）：
 
 ```cmake
 find_library(ROBUSTCFG_LIB robustcfg REQUIRED)
@@ -240,6 +299,16 @@ cmake --build build --parallel
 | 無 WAL | 多個 key 的原子更新需應用層自行保護 |
 
 ---
+
+---
+
+## 貢獻
+
+歡迎提交 Issue 與 Pull Request。詳見 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## 安全性回報
+
+請勿透過公開 Issue 回報安全漏洞，詳見 [SECURITY.md](SECURITY.md)。
 
 ## License
 
