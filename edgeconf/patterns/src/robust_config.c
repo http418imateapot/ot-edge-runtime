@@ -79,7 +79,9 @@ static int parse_log_level(const char *s) {
     if (strcmp(s, "warn")  == 0) return LOG_WARNING;
     if (strcmp(s, "info")  == 0) return LOG_INFO;
     if (strcmp(s, "debug") == 0) return LOG_DEBUG;
-    fprintf(stderr, "Unknown log level '%s'; defaulting to 'info'\n", s);
+    /* Unknown level: warn the user and fall back to info */
+    fprintf(stderr, "Warning: unknown log level '%s'; valid values are "
+            "error|warn|info|debug. Defaulting to 'info'.\n", s);
     return LOG_INFO;
 }
 

@@ -27,7 +27,7 @@ static const char *level_label(int level) {
     case LOG_WARNING: return "WARN";
     case LOG_INFO:    return "INFO";
     case LOG_DEBUG:   return "DEBUG";
-    default:          return "????";
+    default:          return "UNKNOWN";
     }
 }
 

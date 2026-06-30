@@ -6,8 +6,12 @@ Requires=dbus.service
 
 [Service]
 Type=notify
-# Run as a dedicated non-privileged user in production.
-# Change this to a dedicated service account (e.g. robust-config) as needed.
+# Note on User=: The service runs as root by default for broad filesystem access.
+# For production deployments, create a dedicated system account and grant it
+# only the necessary permissions:
+#   sudo useradd --system --no-create-home robust-config
+#   sudo chown robust-config /etc/robust-config
+# Then change User= below to 'robust-config'.
 User=root
 ExecStart=/usr/local/bin/robust_config \
     --config /etc/robust-config/config.conf \

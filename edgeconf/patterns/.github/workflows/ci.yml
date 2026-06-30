@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ["**"]
 
+# Least-privilege token: jobs only need to read repository contents.
+permissions:
+  contents: read
+
 jobs:
   # -------------------------------------------------------------------------
   # Build + static analysis + unit tests (native x86-64)
