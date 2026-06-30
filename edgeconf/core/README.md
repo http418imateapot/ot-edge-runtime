@@ -1,20 +1,34 @@
 # Linux-based Robust-Binary-Config
 
-進階版的 [robust-config-exchange](https://github.com/http418imateapot/robust-config-exchange) 專案，目的是為輕量、使用檔案來保存系統設定的嵌入式系統 App，設計結構化二進位檔案格式，與分段鎖 (byte-range locking) 讀寫方式，提供更高的並行讀寫效率，也避免 flock 整個檔案鎖死造成的效能瓶頸。
+**適用 Linux 邊緣裝置的輕量嵌入式 Key-Value 設定引擎**
 
+進階版的 [robust-config-exchange](https://github.com/http418imateapot/robust-config-exchange) 專案。填補「SQLite 太重、純文字檔太脆」之間的空隙，專為工廠自動化閘道器、AIoT 感測器集線器、邊緣運算節點等場景設計。
+
+詳細架構與格式規格見 **[docs/SDD.md](docs/SDD.md)**。
 
 ---
 
-## 簡介
+## 特性
 
-隨著單板電腦成本降低，開發小型工具程式快速簡便，適合用來快速建置邊緣運算工具、自動化控制周邊工具。但是這類小工具程式為了簡化與盡快上線，可能會使用 log、config 檔案當作程式交換訊息，或是儲存系統設定的媒介，也帶來了檔案讀寫衝突，資料損毀或不一致的風險。
+| 特性 | 說明 |
+|------|------|
+| **CRC32 完整性保護** | File Header 與每筆 Record 均有獨立 CRC32，可偵測 bit-flip 與 flash 損毀 |
+| **斷電可靠寫入** | Log-structured 寫入 + `fdatasync` + write-verify，斷電最多退回上一版有效值 |
+| **並發讀取** | `fcntl` byte-range `F_RDLCK`：多程序可同時讀取，互不阻塞 |
+| **排他寫入** | `F_WRLCK` 確保寫入串行化，不造成資料競爭 |
+| **Lock Timeout** | 非阻塞 `F_SETLK` + retry（500 × 10ms），避免 crash 後無限鎖死 |
+| **執行緒安全** | Handle 內含 `pthread_mutex_t`，保護同程序多執行緒 |
+| **格式可演進** | Header 帶 magic `"RCFG"` + version，支援未來格式遷移 |
+| **零外部依賴** | 純 POSIX C11，CRC32 內建實作，無需任何第三方函式庫 |
 
-在 [robust-config-exchange](https://github.com/http418imateapot/robust-config-exchange) 專案中，使用了 flock 的方式避免上述問題，但是 flock 整份檔案鎖死的方式，會降低應用程式並行讀寫的效率。因此這個專案示範了二進制 config 檔案結構設計，與可以分區讀寫、使用分段鎖的開發放式。
+---
 
 ## 系統需求
 
-* 作業系統：Linux 核心版本至少為 2.6.13，建議使用：Ubuntu 18.04 / 20.04 / 22.04；Raspbian (基於 Debian)
-* 軟體需求：GNU C Library (glibc) 版本至少為 2.4
+- **OS**: Linux 核心 ≥ 2.6.13（建議 Ubuntu 18.04+、Raspbian/Debian）
+- **Compiler**: GCC 5+ 或 Clang 3.6+（需支援 C11 / `_Static_assert`）
+- **CMake**: ≥ 3.12
+- **glibc**: ≥ 2.4
 
 ---
 
@@ -24,26 +38,42 @@
 
 ```bash
 sudo apt-get update
-sudo apt-get install build-essential
+sudo apt-get install build-essential cmake
 ```
 
 ### 2. 下載專案程式碼
 
 ```bash
-git https://github.com/http418imateapot/robust-binary-config
+git clone https://github.com/http418imateapot/robust-binary-config
 cd robust-binary-config
 ```
 
-### 3. 編譯專案
+### 3. 編譯
+
+```bash
+cmake -B build -DBUILD_TESTING=ON
+cmake --build build --parallel
+```
+
+或使用 Makefile 包裝：
 
 ```bash
 make
 ```
 
-成功編譯後會生成執行檔 robust_bin_config。
+成功後產生：
+- `build/librobustcfg.a` — 靜態函式庫
+- `build/robust_cfg_tool` — CLI 工具
 
+### 4. 執行測試
 
-### 4. 清理專案
+```bash
+ctest --test-dir build --output-on-failure
+# 或
+make test
+```
+
+### 5. 清理
 
 ```bash
 make clean
@@ -51,13 +81,17 @@ make clean
 
 ---
 
-## 範例程式 ``robust_bin_config`` Usage
+## CLI 工具 `robust_cfg_tool` 使用說明
 
-```shell
-Usage: ./robust_bin_config <read|write> <index> [<key> <value>]
-  read  : Read a record at the specified index
-  write : Write a record at the specified index with the given data
-          Requires: <key> <value>
+```
+Usage: robust_cfg_tool <file> <command> [args...]
+
+Commands:
+  read   <key>           Read value for the given key
+  write  <key> <value>   Write (or update) a key-value pair
+  delete <key>           Delete a key
+  repair                 Reset CORRUPT slots to EMPTY
+  compact                Remove DELETED/CORRUPT slots
 ```
 
 ---
@@ -66,39 +100,148 @@ Usage: ./robust_bin_config <read|write> <index> [<key> <value>]
 
 ### 1. 寫入設定資料
 
-範例：寫入一筆記錄到第 0 筆索引位置
-
 ```bash
-./robust_bin_config write 0 sensor1 temperature=30
+./build/robust_cfg_tool config.bin write server_url https://example.com
+./build/robust_cfg_tool config.bin write sample_rate 100
+./build/robust_cfg_tool config.bin write threshold 0.85
 ```
 
 ### 2. 讀取設定資料
 
-範例：讀取第 0 筆索引位置的記錄
-
-bash
-```
-./robust_bin_config read 0
+```bash
+./build/robust_cfg_tool config.bin read server_url
 ```
 
-### 3. 範例輸出
-
-寫入資料成功
-
-```plaintext
-Write success!
+輸出：
+```
+key=server_url value=https://example.com
 ```
 
-讀取資料成功
+### 3. 更新已有 Key
 
-```plaintext
-Read success! key=sensor1, value=temperature=30
+```bash
+./build/robust_cfg_tool config.bin write sample_rate 200
+./build/robust_cfg_tool config.bin read  sample_rate
+# key=sample_rate value=200
 ```
 
-當檔案不存在時的讀取錯誤
+### 4. 刪除 Key
 
-```plaintext
-File 'config.bin' does not exist. Please write to the file first.
-Read failed!
+```bash
+./build/robust_cfg_tool config.bin delete threshold
 ```
+
+### 5. 維護操作
+
+```bash
+# 修復損毀 slots（開機後建議執行）
+./build/robust_cfg_tool config.bin repair
+
+# 回收已刪除 slots 的空間
+./build/robust_cfg_tool config.bin compact
+```
+
+---
+
+## 在 C 程式中使用
+
+```c
+#include "robust_cfg.h"
+
+// 開啟（或建立）設定檔，預設容量 64 筆
+robust_cfg_handle_t *h = robust_cfg_open("/etc/myapp/config.bin", 0);
+if (!h) { perror("open"); exit(1); }
+
+// 寫入
+robust_cfg_write(h, "server_url", "https://example.com");
+
+// 讀取
+char url[ROBUST_CFG_VALUE_MAX];
+if (robust_cfg_read(h, "server_url", url, sizeof(url)) == ROBUST_CFG_OK)
+    printf("url = %s\n", url);
+
+// 刪除
+robust_cfg_delete(h, "server_url");
+
+// 維護
+robust_cfg_repair(h);   // 修復損毀 slots
+robust_cfg_compact(h);  // 回收空間
+
+robust_cfg_close(h);
+```
+
+與 CMake 專案整合：
+
+```cmake
+find_library(ROBUSTCFG_LIB robustcfg REQUIRED)
+target_link_libraries(my_daemon PRIVATE ${ROBUSTCFG_LIB} pthread)
+target_include_directories(my_daemon PRIVATE /usr/local/include)
+```
+
+---
+
+## 檔案格式概覽
+
+```
+Offset    Size    Description
+────────  ──────  ───────────────────────────────────────────────
+0         64      File Header: magic "RCFG" + version + capacity
+                              + record_count + CRC32
+64        300     Record Slot 0: state + timestamp + key[32]
+                               + value[256] + CRC32
+364       300     Record Slot 1
+...
+```
+
+詳細規格見 [docs/SDD.md § 3](docs/SDD.md)。
+
+---
+
+## 進階建置選項
+
+### Sanitizer 建置（開發 / CI 用）
+
+```bash
+cmake -B build-asan \
+  -DBUILD_TESTING=ON \
+  -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g"
+cmake --build build-asan --parallel
+ctest --test-dir build-asan --output-on-failure
+```
+
+### aarch64 交叉編譯
+
+```bash
+sudo apt-get install gcc-aarch64-linux-gnu
+cmake -B build-arm \
+  -DCMAKE_SYSTEM_NAME=Linux \
+  -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+  -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+  -DBUILD_TESTING=OFF
+cmake --build build-arm --parallel
+```
+
+### 動態函式庫
+
+```bash
+cmake -B build -DBUILD_SHARED_LIBS=ON
+cmake --build build --parallel
+```
+
+---
+
+## 已知限制
+
+| 限制 | 說明 |
+|------|------|
+| Advisory lock | 不遵守協議的程序可繞過鎖直接寫檔 |
+| 固定 capacity | 建立後無法動態擴容 |
+| 線性掃描 | read/write 均為 O(N)，N 為 capacity |
+| 無 WAL | 多個 key 的原子更新需應用層自行保護 |
+
+---
+
+## License
+
+MIT — 詳見 [LICENSE](LICENSE)
 

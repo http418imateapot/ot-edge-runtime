@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------- #
+  # Primary: build + test on Ubuntu with optional sanitizers         #
+  # ---------------------------------------------------------------- #
+  build-and-test:
+    name: Build & Test (${{ matrix.sanitizer }})
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [none, asan_ubsan]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake
+
+      - name: Configure (no sanitizer)
+        if: matrix.sanitizer == 'none'
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON
+
+      - name: Configure (AddressSanitizer + UBSanitizer)
+        if: matrix.sanitizer == 'asan_ubsan'
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_TESTING=ON \
+            -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g"
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Run tests
+        run: |
+          ctest --test-dir build \
+            --output-on-failure \
+            --timeout 60
+
+  # ---------------------------------------------------------------- #
+  # Cross-compilation for aarch64 (Raspberry Pi / i.MX8 targets)    #
+  # ---------------------------------------------------------------- #
+  cross-compile-aarch64:
+    name: Cross-compile aarch64
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cross-compiler
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
+      - name: Configure for aarch64
+        run: |
+          cmake -B build-arm \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF
+
+      - name: Build
+        run: cmake --build build-arm --parallel $(nproc)
+
+      - name: Verify binary architecture
+        run: |
+          file build-arm/robust_cfg_tool | grep -q "aarch64"
+          file build-arm/librobustcfg.a  | grep -q "aarch64"
