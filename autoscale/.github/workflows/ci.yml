@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   python-syntax:
     name: Python Syntax Check
@@ -39,7 +42,31 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -r requirements-dev.txt
 
       - name: Run tests
         run: python -m pytest
+
+      - name: Verify dependency consistency
+        run: python -m pip check
+
+  package:
+    name: Build package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build frontend
+        run: python -m pip install build==1.2.2.post1
+
+      - name: Build wheel and source distribution
+        run: python -m build
+
+      - name: Verify wheel imports
+        run: |
+          python -m pip install dist/*.whl
+          python -c "import adjust, decoder, plc_config"

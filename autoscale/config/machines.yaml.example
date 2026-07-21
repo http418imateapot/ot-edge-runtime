@@ -1,0 +1,6 @@
+machines:
+  - machine_sn: FAB01-TOOL42
+    serial_port: ttyACM0
+    min_delta: 8192
+    max_module: 16
+    max_unit: 8

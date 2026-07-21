@@ -17,6 +17,8 @@ from typing import Any
 
 import yaml
 
+from plc_config import MqttSecurityConfig, add_mqtt_security_arguments, env_bool, env_int, env_text
+
 try:
     from bcc import BPF
 except ImportError:  # pragma: no cover - exercised in production
@@ -40,6 +42,8 @@ handler.setFormatter(JsonFormatter())
 logging.basicConfig(level=logging.INFO, handlers=[handler])
 logger = logging.getLogger(__name__)
 
+MAX_DECODER_TOPICS = 256
+
 
 @dataclass(frozen=True)
 class MachineConfig:
@@ -48,6 +52,18 @@ class MachineConfig:
     min_delta: int = 8192
     max_module: int = 16
     max_unit: int = 8
+
+    def __post_init__(self) -> None:
+        if not self.machine_sn or len(self.machine_sn) > 128 or any(char not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:-" for char in self.machine_sn):
+            raise ValueError("machine_sn must be 1-128 characters using letters, digits, dot, underscore, colon, or hyphen")
+        if self.serial_port.lower() != "all":
+            if len(self.serial_port) > 31 or any(char not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-" for char in self.serial_port):
+                raise ValueError("serial_port must be a device name (for example ttyACM0), not a path")
+        for name, value in (("min_delta", self.min_delta), ("max_module", self.max_module), ("max_unit", self.max_unit)):
+            if value <= 0:
+                raise ValueError(f"{name} must be greater than zero")
+        if self.max_module * self.max_unit > MAX_DECODER_TOPICS:
+            raise ValueError(f"max_module multiplied by max_unit must not exceed {MAX_DECODER_TOPICS}")
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any], defaults: "MachineConfig") -> "MachineConfig":
@@ -187,8 +203,9 @@ class MonitoringHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802
         if self.path == "/healthz":
-            payload = json.dumps(self.metrics_state.health_snapshot(), ensure_ascii=False).encode("utf-8")
-            self.send_response(HTTPStatus.OK)
+            snapshot = self.metrics_state.health_snapshot()
+            payload = json.dumps(snapshot, ensure_ascii=False).encode("utf-8")
+            self.send_response(HTTPStatus.OK if snapshot["status"] == "ok" else HTTPStatus.SERVICE_UNAVAILABLE)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
@@ -327,10 +344,6 @@ int trace_tty_read_exit(struct pt_regs *ctx) {{
             str(self.script_dir / "decoder.py"),
             "--topic",
             topic,
-            "--broker",
-            self.args.decoder_broker,
-            "--port",
-            str(self.args.decoder_port),
             "--processor",
             self.args.decoder_processor,
             "--dlq-path",
@@ -340,8 +353,18 @@ int trace_tty_read_exit(struct pt_regs *ctx) {{
             command.extend(["--sqlite-path", self.args.decoder_sqlite_path])
         return command
 
+    def _decoder_environment(self) -> dict[str, str]:
+        environment = MqttSecurityConfig.from_namespace(self.args).as_environment(os.environ)
+        environment.update(
+            {
+                "PLC_MQTT_BROKER": self.args.decoder_broker,
+                "PLC_MQTT_PORT": str(self.args.decoder_port),
+            }
+        )
+        return environment
+
     def spawn_decoder(self, topic: str) -> None:
-        proc = subprocess.Popen(self._decoder_command(topic))
+        proc = subprocess.Popen(self._decoder_command(topic), env=self._decoder_environment())
         self.active_decoders[topic] = proc
         self.decoder_started_at[topic] = time.monotonic()
         logger.info(
@@ -567,21 +590,26 @@ class Adjuster:
                 continue
             self.contexts[key] = runtime
 
-    def reload_configs(self, status: str) -> None:
+    def reload_configs(self, status: str) -> bool:
         try:
             configs = self.load_machine_configs()
             self.reconcile_contexts(configs)
             self.metrics.set_reload_status(status)
             logger.info("Configuration loaded", extra={"extra": {"machine_count": len(self.contexts), "source": self.args.config or "cli"}})
+            return bool(self.contexts)
         except Exception as exc:
             self.metrics.set_reload_status("failed")
             logger.error("Configuration reload failed", extra={"extra": {"error": str(exc)}})
+            return False
 
     def run(self) -> int:
         self.ensure_environment()
         self.install_signal_handlers()
         self.server.start()
-        self.reload_configs("loaded")
+        if not self.reload_configs("loaded"):
+            logger.error("No machine context could be started; refusing to report readiness")
+            self.server.stop()
+            return 1
         self.watchdog.ready()
         self.watchdog.status("Monitoring tty_read flow")
         logger.info(
@@ -639,28 +667,42 @@ def build_parser() -> argparse.ArgumentParser:
             "spawn/terminate decoder processes based on PLC point flow."
         )
     )
-    parser.add_argument("--serial", type=str, default="all", help="Specify the serial port name/path to filter.")
-    parser.add_argument("--interval", type=int, default=60, help="Measurement interval in seconds.")
-    parser.add_argument("--min_delta", type=int, default=8192, help="Minimum bytes read per interval to trigger scaling.")
-    parser.add_argument("--max_module", type=int, default=16, help="Maximum module ID.")
-    parser.add_argument("--max_unit", type=int, default=8, help="Maximum unit ID.")
-    parser.add_argument("--machine_sn", type=str, default="1", help="Machine serial number used as the first MQTT topic level.")
-    parser.add_argument("--dry_run", action="store_true", help="Enable dry run mode.")
-    parser.add_argument("--config", type=str, help="Optional YAML file containing a machines list for multi-machine monitoring.")
-    parser.add_argument("--metrics-host", type=str, default="127.0.0.1", help="Host interface for /healthz and /metrics.")
-    parser.add_argument("--metrics-port", type=int, default=9108, help="Port for /healthz and /metrics.")
-    parser.add_argument("--decoder-broker", type=str, default="localhost", help="Broker passed to spawned decoders.")
-    parser.add_argument("--decoder-port", type=int, default=1883, help="Broker port passed to spawned decoders.")
-    parser.add_argument("--decoder-processor", choices=["lineprotocol", "sqlite"], default="lineprotocol", help="Processor used by spawned decoders.")
-    parser.add_argument("--decoder-sqlite-path", type=str, default="/var/lib/plc-edgeflow/points.db", help="SQLite destination for decoder processor mode sqlite.")
-    parser.add_argument("--decoder-dlq-path", type=str, default="/var/lib/plc-edgeflow/decoder-dlq.db", help="SQLite dead-letter queue path for spawned decoders.")
-    parser.add_argument("--decoder-crash-threshold", type=int, default=3, help="Crash count threshold before restart backoff is enforced.")
-    parser.add_argument("--decoder-restart-backoff-window", type=int, default=60, help="Backoff window in seconds for repeated decoder crashes.")
+    parser.add_argument("--serial", type=str, default=env_text("PLC_SERIAL", "all"), help="Serial device name to filter (for example ttyACM0).")
+    parser.add_argument("--interval", type=int, default=env_int("PLC_INTERVAL", 60), help="Measurement interval in seconds.")
+    parser.add_argument("--min_delta", type=int, default=env_int("PLC_MIN_DELTA", 8192), help="Minimum bytes read per interval to trigger scaling.")
+    parser.add_argument("--max_module", type=int, default=env_int("PLC_MAX_MODULE", 16), help="Maximum module ID.")
+    parser.add_argument("--max_unit", type=int, default=env_int("PLC_MAX_UNIT", 8), help="Maximum unit ID.")
+    parser.add_argument("--machine_sn", type=str, default=env_text("PLC_MACHINE_SN", "1"), help="Machine serial number used as the first MQTT topic level.")
+    parser.add_argument("--dry_run", action="store_true", default=env_bool("PLC_DRY_RUN", False), help="Enable dry run mode.")
+    parser.add_argument("--config", type=str, default=env_text("PLC_CONFIG"), help="Optional YAML file containing a machines list for multi-machine monitoring.")
+    parser.add_argument("--metrics-host", type=str, default=env_text("PLC_METRICS_HOST", "127.0.0.1"), help="Host interface for /healthz and /metrics.")
+    parser.add_argument("--metrics-port", type=int, default=env_int("PLC_METRICS_PORT", 9108), help="Port for /healthz and /metrics.")
+    parser.add_argument("--decoder-broker", type=str, default=env_text("PLC_MQTT_BROKER", "localhost"), help="Broker passed to spawned decoders.")
+    parser.add_argument("--decoder-port", type=int, default=env_int("PLC_MQTT_PORT", 1883), help="Broker port passed to spawned decoders.")
+    parser.add_argument("--decoder-processor", choices=["lineprotocol", "sqlite"], default=env_text("PLC_DECODER_PROCESSOR", "lineprotocol"), help="Processor used by spawned decoders.")
+    parser.add_argument("--decoder-sqlite-path", type=str, default=env_text("PLC_DECODER_SQLITE_PATH", "/var/lib/plc-edgeflow/points.db"), help="SQLite destination for decoder processor mode sqlite.")
+    parser.add_argument("--decoder-dlq-path", type=str, default=env_text("PLC_DECODER_DLQ_PATH", "/var/lib/plc-edgeflow/decoder-dlq.db"), help="SQLite dead-letter queue path for spawned decoders.")
+    parser.add_argument("--decoder-crash-threshold", type=int, default=env_int("PLC_DECODER_CRASH_THRESHOLD", 3), help="Crash count threshold before restart backoff is enforced.")
+    parser.add_argument("--decoder-restart-backoff-window", type=int, default=env_int("PLC_DECODER_RESTART_BACKOFF_WINDOW", 60), help="Backoff window in seconds for repeated decoder crashes.")
+    add_mqtt_security_arguments(parser)
     return parser
 
 
 def main() -> int:
-    args = build_parser().parse_args()
+    parser = build_parser()
+    args = parser.parse_args()
+    for name in ("interval", "min_delta", "max_module", "max_unit", "decoder_crash_threshold", "decoder_restart_backoff_window"):
+        if getattr(args, name) <= 0:
+            parser.error(f"--{name.replace('_', '-')} must be greater than zero")
+    if not 1 <= args.decoder_port <= 65535:
+        parser.error("--decoder-port must be between 1 and 65535")
+    if not 1 <= args.metrics_port <= 65535:
+        parser.error("--metrics-port must be between 1 and 65535")
+    try:
+        MachineConfig(args.machine_sn, args.serial, args.min_delta, args.max_module, args.max_unit)
+        MqttSecurityConfig.from_namespace(args).validate()
+    except ValueError as exc:
+        parser.error(str(exc))
     return Adjuster(args).run()
 
 

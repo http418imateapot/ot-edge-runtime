@@ -89,7 +89,8 @@ Cost is not a constraint.
 - On shutdown, call `terminate_decoder()` for every topic; use `proc.wait(timeout=5)` then `proc.kill()`.
 
 ### MQTT Reconnect (decoder.py)
-- Always implement `on_disconnect` with **exponential back-off** retry (initial 2 s, max 60 s).
+- Configure Paho's network loop with **exponential back-off** retry (initial 2 s, max 60 s); do not block callbacks with a manual reconnect loop.
+- Use Paho callback API VERSION2 and MQTT 3.1.1 explicitly.
 - Re-subscribe in `on_connect` using the topic stored in `userdata`.
 - Use `loop_start()` + a `threading.Event` keep-alive rather than `loop_forever()`
   so the main thread can react to signals.

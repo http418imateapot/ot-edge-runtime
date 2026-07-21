@@ -62,12 +62,11 @@ cd plc-ebpf-autoscaler
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Install runtime + dev dependencies
-pip install -e ".[dev]"
+# Install pinned runtime + development dependencies
+pip install -r requirements-dev.txt
 ```
 
-> **BCC note:** `pip install -e ".[ebpf]"` installs the PyPI `bcc` stub.  
-> For real eBPF functionality always prefer the system package (`python3-bpfcc`).
+> **BCC note:** the PyPI package named `bcc` is not a supported dependency for this project. Install the real BCC Python bindings from the host distribution (`python3-bpfcc`).
 
 ---
 

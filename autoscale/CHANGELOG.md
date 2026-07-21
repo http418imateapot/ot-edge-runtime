@@ -9,6 +9,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- MQTT username/password-file authentication, verified TLS, and optional mutual TLS for adjuster-managed and standalone decoders.
+- Production deployment, rollout, rollback, factory acceptance, and third-party licensing documentation.
+- Secure environment and multi-machine configuration examples.
+- Deployment contract tests for secure systemd and MQTT defaults.
+
+### Changed
+
+- systemd units now execute installed console scripts directly without a shell and use a stronger least-privilege sandbox.
+- Runtime requirements no longer include the host-provided BCC bindings or development-only pytest dependency.
+- Runtime dependencies now use Paho MQTT 2.1 callback API VERSION2 and PyYAML 6.0.3.
+- Release artifacts now include SHA-256 checksums, and Dependabot tracks Python and GitHub Actions updates.
+- Initial configuration or eBPF attach failure now prevents the adjuster from reporting systemd readiness.
+
 ---
 
 ## [1.0.0] — 2026-06-30

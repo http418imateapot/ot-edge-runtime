@@ -1,8 +1,8 @@
 [Unit]
 Description=PLC EdgeFlow eBPF Monitor and Decoder Adjuster
-Documentation=https://github.com/http418imateapot/PLC-EdgeFlow-eBPF
-After=network.target mosquitto.service
-Wants=mosquitto.service
+Documentation=https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/docs/PRODUCTION_DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=notify
@@ -10,41 +10,43 @@ User=plcmon
 Group=plcmon
 
 # EnvironmentFile allows site-specific overrides without changing this unit.
-EnvironmentFile=-/etc/plc-edgeflow/adjust.env
-
-# If installed via `pip install plc-ebpf-autoscaler`, replace the ExecStart path
-# with `ExecStart=/usr/local/bin/plc-adjust \` (or wherever pip places scripts).
-ExecStart=/bin/sh -lc 'exec /usr/bin/python3 /opt/plc-edgeflow/adjust.py \
-    --serial "${PLC_SERIAL:-all}" \
-    --machine_sn "${PLC_MACHINE_SN:-1}" \
-    --interval "${PLC_INTERVAL:-60}" \
-    --min_delta "${PLC_MIN_DELTA:-8192}" \
-    --max_module "${PLC_MAX_MODULE:-16}" \
-    --max_unit "${PLC_MAX_UNIT:-8}" \
-    ${PLC_CONFIG:+--config "$PLC_CONFIG"} \
-    --metrics-host "${PLC_METRICS_HOST:-127.0.0.1}" \
-    --metrics-port "${PLC_METRICS_PORT:-9108}" \
-    --decoder-broker "${PLC_BROKER:-localhost}" \
-    --decoder-port "${PLC_BROKER_PORT:-1883}" \
-    --decoder-processor "${PLC_DECODER_PROCESSOR:-lineprotocol}" \
-    --decoder-sqlite-path "${PLC_DECODER_SQLITE_PATH:-/var/lib/plc-edgeflow/points.db}" \
-    --decoder-dlq-path "${PLC_DECODER_DLQ_PATH:-/var/lib/plc-edgeflow/decoder-dlq.db}"'
-ExecStartPost=/usr/bin/python3 -c "import urllib.request; urllib.request.urlopen('http://${PLC_METRICS_HOST:-127.0.0.1}:${PLC_METRICS_PORT:-9108}/healthz', timeout=5).read()"
+EnvironmentFile=/etc/plc-edgeflow/adjust.env
+Environment=PLC_REQUIRE_SECURE_MQTT=true
+ExecStart=/opt/plc-edgeflow/venv/bin/plc-adjust
 
 Restart=always
 RestartSec=5
 TimeoutStopSec=15
+TimeoutStartSec=60
 WatchdogSec=30
 NotifyAccess=main
+LimitMEMLOCK=infinity
+LimitNOFILE=8192
+TasksMax=768
 
-AmbientCapabilities=CAP_BPF CAP_SYS_ADMIN CAP_PERFMON
-CapabilityBoundingSet=CAP_BPF CAP_SYS_ADMIN CAP_PERFMON
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON
+AmbientCapabilities=CAP_BPF CAP_PERFMON
 
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-ReadWritePaths=/sys/fs/bpf /sys/kernel/debug /var/lib/plc-edgeflow
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+StateDirectory=plc-edgeflow
+StateDirectoryMode=0750
+ReadWritePaths=/sys/fs/bpf /sys/kernel/debug /sys/kernel/tracing
+UMask=0077
 
 StandardOutput=journal
 StandardError=journal
