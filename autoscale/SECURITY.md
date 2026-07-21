@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 1.x     | ✅ Yes     |
-| < 1.0   | ❌ No      |
+| 1.x     | Yes       |
+| < 1.0   | No        |
 
 ## Scope
 
@@ -15,7 +15,7 @@ This policy covers the **plc-ebpf-autoscaler** codebase:
 - `decoder.py` — MQTT subscriber and PLC point data processor
 - Supporting files (`systemd/`, `pyproject.toml`, etc.)
 
-**Out of scope:** vulnerabilities in third-party dependencies (BCC, paho-mqtt, Mosquitto, the Linux kernel). Please report those to the respective upstream projects.
+Vulnerabilities whose root cause is in BCC, paho-mqtt, Mosquitto, or the Linux kernel should also be reported to the respective upstream project. Reports that this project pins, configures, or uses a dependency unsafely remain in scope here.
 
 ## Reporting a Vulnerability
 
@@ -47,10 +47,11 @@ Please include:
 
 ## Security Considerations for Operators
 
-This tool requires elevated Linux capabilities (`CAP_BPF`, `CAP_PERFMON`, optionally `CAP_SYS_ADMIN`) to attach eBPF programs. Operators should:
+The supported production profile uses `CAP_BPF` and `CAP_PERFMON` to attach eBPF programs. Kernels that require `CAP_SYS_ADMIN` are outside the least-privilege deployment profile. Operators should:
 
 - Run the service under the dedicated low-privilege `plcmon` user as shown in the systemd unit files.
 - Ensure `/sys/fs/bpf` is mounted and accessible only to required users.
 - Keep the Linux kernel and BCC toolchain up to date.
 - Restrict network access to the `/healthz` and `/metrics` HTTP endpoints (default: `127.0.0.1:9108`) using firewall rules.
 - Rotate MQTT broker credentials and restrict broker ACLs to only the topics this service needs.
+- Require verified TLS for any MQTT credential and store passwords in a root-owned file readable by the `plcmon` group, never in a command line.

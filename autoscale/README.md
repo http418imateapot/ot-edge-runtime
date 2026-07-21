@@ -8,6 +8,14 @@
 
 ---
 
+## 開源與商用定位
+
+本專案採 [MIT License](LICENSE)，可供商業使用、修改、散布與私有部署，但須保留授權聲明。正式產線導入請依 [Production deployment guide](docs/PRODUCTION_DEPLOYMENT.md) 完成 TLS、最小權限、容量、故障演練、rollout 與 rollback 檢核，並查閱 [Third-party notices](THIRD_PARTY_NOTICES.md)。
+
+本專案是監控與資料管線元件，不是安全儀控、緊急停止或閉迴路機台控制元件，也不宣稱已取得 IEC 62443、IEC 61508、ISO 13849 或場域專屬認證。MIT 授權允許商用，不等同於提供保固、賠償、SLA 或免除導入單位的驗證責任。
+
+---
+
 ## 簡介
 
 ### 問題背景
@@ -79,18 +87,18 @@ plc-ebpf-autoscaler/
 ```bash
 sudo apt-get update
 sudo apt-get install -y python3 python3-pip mosquitto \
-    bpfcc-tools linux-headers-$(uname -r)
+    python3-bpfcc bpfcc-tools linux-headers-$(uname -r)
 sudo systemctl enable --now mosquitto
 ```
 
 #### 2. 安裝本套件
 
 ```bash
-# 從 GitHub 安裝（正式部署）
-pip install git+https://github.com/http418imateapot/plc-ebpf-autoscaler.git
+# 安裝已審查的 release wheel（正式部署請依 production guide 建立專用 venv）
+pip install ./plc_ebpf_autoscaler-<version>-py3-none-any.whl
 
 # 或從本機原始碼安裝（開發模式）
-pip install -e ".[dev]"
+pip install -r requirements-dev.txt
 ```
 
 安裝後即可使用 `plc-adjust` 與 `plc-decoder` 命令：
@@ -172,29 +180,7 @@ mkdir -p /var/lib/plc-edgeflow
 sudo python3 adjust.py
 ```
 
-完整參數說明：
-
-```
-usage: adjust.py [-h] [--serial SERIAL] [--interval INTERVAL]
-                 [--min_delta MIN_DELTA] [--max_module MAX_MODULE]
-                 [--max_unit MAX_UNIT] [--machine_sn MACHINE_SN] [--dry_run]
-
-Integrated eBPF monitor and adjuster: measure tty_read bytes and
-dynamically spawn/terminate decoder processes based on PLC point flow.
-
-options:
-  -h, --help                show this help message and exit
-  --serial SERIAL           Serial port name to filter (e.g., 'ttyACM0').
-                            Default 'all' means no filtering.
-  --interval INTERVAL       Measurement interval in seconds (default: 60).
-  --min_delta MIN_DELTA     Minimum bytes per interval to trigger scaling
-                            (default: 8192 — 512 points × 16 bytes).
-  --max_module MAX_MODULE   Maximum module ID (default: 16).
-  --max_unit MAX_UNIT       Maximum unit ID (default: 8).
-  --machine_sn MACHINE_SN  Machine serial number for MQTT topic prefix
-                            (default: '1').
-  --dry_run                 Print intended actions without spawning processes.
-```
+完整參數（包含 MQTT 帳密檔、TLS、mTLS 與監控端點）請執行 `plc-adjust --help`；systemd 部署則建議使用 `config/adjust.env.example`，避免站點設定散落在命令列。
 
 #### Dry-run 測試（不影響生產線）
 
@@ -204,60 +190,7 @@ python3 adjust.py --dry_run --interval 5 --machine_sn TEST01
 
 ### 方法二：systemd 部署（生產環境推薦）
 
-#### 方式 A — 透過 pip 安裝後部署
-
-```bash
-# 建立低權限服務帳號
-sudo useradd --system --no-create-home plcmon
-
-# 安裝套件（讓 plc-adjust / plc-decoder console scripts 進入 PATH）
-sudo pip install git+https://github.com/http418imateapot/plc-ebpf-autoscaler.git
-
-# 更新 ExecStart 為 console script 路徑（查詢安裝位置）
-which plc-adjust   # 通常為 /usr/local/bin/plc-adjust
-
-# 安裝 systemd 服務（ExecStart 已預設指向 /usr/bin/python3 /opt/plc-edgeflow/adjust.py，
-# 若使用 pip 安裝請將其改為 /usr/local/bin/plc-adjust）
-sudo cp systemd/plc-adjust.service /etc/systemd/system/
-sudo cp systemd/plc-decoder@.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now plc-adjust
-```
-
-#### 方式 B — 直接複製腳本部署
-
-```bash
-# 建立低權限服務帳號
-sudo useradd --system --no-create-home plcmon
-
-# 部署程式
-sudo mkdir -p /opt/plc-edgeflow
-sudo cp adjust.py decoder.py /opt/plc-edgeflow/
-sudo chown -R plcmon:plcmon /opt/plc-edgeflow
-
-# 安裝 systemd 服務
-sudo cp systemd/plc-adjust.service /etc/systemd/system/
-sudo cp systemd/plc-decoder@.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now plc-adjust
-```
-
-站點環境變數可透過 `/etc/plc-edgeflow/adjust.env` 覆蓋預設值：
-
-```bash
-sudo mkdir -p /etc/plc-edgeflow
-sudo tee /etc/plc-edgeflow/adjust.env <<EOF
-PLC_SERIAL=ttyACM0
-PLC_MACHINE_SN=FAB01-TOOL42
-PLC_INTERVAL=60
-PLC_MIN_DELTA=8192
-PLC_METRICS_HOST=127.0.0.1
-PLC_METRICS_PORT=9108
-PLC_DECODER_PROCESSOR=lineprotocol
-PLC_DECODER_SQLITE_PATH=/var/lib/plc-edgeflow/points.db
-PLC_DECODER_DLQ_PATH=/var/lib/plc-edgeflow/decoder-dlq.db
-EOF
-```
+生產環境應部署經審查的 release wheel，不應直接從 `main`、Git URL 或可變動的工作目錄安裝。完整步驟、虛擬環境路徑、BCC 系統套件、systemd unit、MQTT TLS／密碼檔、檔案權限與驗收清單請參考 [Production deployment guide](docs/PRODUCTION_DEPLOYMENT.md)。可從 [config/adjust.env.example](config/adjust.env.example) 與 [config/machines.yaml.example](config/machines.yaml.example) 建立站點設定。
 
 ---
 
@@ -291,10 +224,12 @@ journalctl -u plc-adjust -f -o json
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 貢獻指南、開發環境設定 |
 | [SECURITY.md](SECURITY.md) | 安全漏洞回報政策 |
 | [LICENSE](LICENSE) | MIT License |
+| [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | 執行期與開發依賴授權清單 |
+| [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md) | 正式產線部署、驗收與回復指南 |
 
 ```bash
 # 安裝開發依賴
-pip install -e ".[dev]"
+pip install -r requirements-dev.txt
 
 # 執行測試
 python3 -m pytest

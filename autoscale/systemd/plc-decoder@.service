@@ -1,8 +1,8 @@
 [Unit]
 Description=PLC EdgeFlow Decoder for topic %i
-Documentation=https://github.com/http418imateapot/PLC-EdgeFlow-eBPF
-After=network.target mosquitto.service
-Wants=mosquitto.service
+Documentation=https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/docs/PRODUCTION_DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
 BindsTo=plc-adjust.service
 
 [Service]
@@ -10,15 +10,9 @@ Type=simple
 User=plcmon
 Group=plcmon
 
-EnvironmentFile=-/etc/plc-edgeflow/decoder.env
-
-ExecStart=/usr/bin/python3 /opt/plc-edgeflow/decoder.py \
-    --topic  %i \
-    --broker ${PLC_BROKER:-localhost} \
-    --port   ${PLC_BROKER_PORT:-1883} \
-    --processor ${PLC_DECODER_PROCESSOR:-lineprotocol} \
-    --sqlite-path ${PLC_DECODER_SQLITE_PATH:-/var/lib/plc-edgeflow/points.db} \
-    --dlq-path ${PLC_DECODER_DLQ_PATH:-/var/lib/plc-edgeflow/decoder-dlq.db}
+EnvironmentFile=/etc/plc-edgeflow/adjust.env
+Environment=PLC_REQUIRE_SECURE_MQTT=true
+ExecStart=/opt/plc-edgeflow/venv/bin/plc-decoder --topic %I
 
 Restart=on-failure
 RestartSec=5
@@ -28,7 +22,21 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-ReadWritePaths=/var/lib/plc-edgeflow
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+StateDirectory=plc-edgeflow
+StateDirectoryMode=0750
+UMask=0077
 
 StandardOutput=journal
 StandardError=journal

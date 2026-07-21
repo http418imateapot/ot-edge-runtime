@@ -2,7 +2,10 @@ import json
 import sqlite3
 from pathlib import Path
 
-from decoder import DeadLetterQueue, PointRecord, SQLiteProcessor, build_line_protocol, normalize_payload
+import paho.mqtt.client as mqtt
+
+from decoder import DeadLetterQueue, LineProtocolProcessor, MqttDecoder, PointRecord, SQLiteProcessor, build_line_protocol, normalize_payload
+from plc_config import MqttSecurityConfig
 
 
 def test_normalize_payload_uses_payload_and_topic_fallback():
@@ -71,3 +74,20 @@ def test_build_line_protocol_formats_tags_and_field():
     line = build_line_protocol(point)
 
     assert line.startswith("plc_point,machine_sn=FAB01,module=1,unit=2,point_id=temp value=42i ")
+
+
+def test_mqtt_decoder_constructs_paho_v2_verified_tls_client(tmp_path: Path):
+    dlq = DeadLetterQueue(str(tmp_path / "dlq.db"))
+    decoder = MqttDecoder(
+        "FAB01/#",
+        "localhost",
+        1883,
+        LineProtocolProcessor(),
+        dlq,
+        MqttSecurityConfig(tls=True),
+    )
+
+    assert decoder.client._callback_api_version == mqtt.CallbackAPIVersion.VERSION2
+    assert decoder.client._protocol == mqtt.MQTTv311
+    assert decoder.client._ssl_context.check_hostname is True
+    decoder.close()

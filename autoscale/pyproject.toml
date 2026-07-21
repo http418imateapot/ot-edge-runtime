@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,8 @@ name = "plc-ebpf-autoscaler"
 version = "1.0.0"
 description = "eBPF-based PLC serial-port traffic monitor that dynamically scales MQTT decoder processes on Linux SBCs"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Tinker" }]
 requires-python = ">=3.10"
 keywords = ["plc", "ebpf", "mqtt", "autoscaler", "industrial", "iot"]
@@ -16,7 +17,6 @@ classifiers = [
     "Environment :: No Input/Output (Daemon)",
     "Intended Audience :: Developers",
     "Intended Audience :: Manufacturing",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -31,15 +31,14 @@ classifiers = [
 #       manager (e.g. `apt install python3-bpfcc`), not by pip.
 #       Install it separately; see the README for instructions.
 dependencies = [
-    "paho-mqtt==1.6.1",
-    "PyYAML>=6.0.2",
+    "paho-mqtt>=2.1.0,<3",
+    "PyYAML>=6.0.3,<7",
 ]
 
 [project.optional-dependencies]
-# Install BCC Python bindings from PyPI (fallback; prefer the system package).
-ebpf = ["bcc==0.29.1"]
 # Development / test tools.
 dev = [
+    "build>=1.2.2",
     "pytest>=8.3.5",
 ]
 
@@ -52,13 +51,14 @@ plc-decoder = "decoder:main"
 "Bug Tracker"    = "https://github.com/http418imateapot/plc-ebpf-autoscaler/issues"
 "Changelog"      = "https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/CHANGELOG.md"
 "Security Policy"= "https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/SECURITY.md"
+"Documentation"  = "https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/docs/PRODUCTION_DEPLOYMENT.md"
 
 # ---------------------------------------------------------------------------
 # Setuptools: treat adjust.py and decoder.py as top-level modules (no package
 # directory needed — they live at the project root alongside pyproject.toml).
 # ---------------------------------------------------------------------------
 [tool.setuptools]
-py-modules = ["adjust", "decoder"]
+py-modules = ["adjust", "decoder", "plc_config"]
 
 # ---------------------------------------------------------------------------
 # pytest

@@ -14,6 +14,8 @@ from typing import Any
 
 import paho.mqtt.client as mqtt
 
+from plc_config import MqttSecurityConfig, add_mqtt_security_arguments, env_int, env_text
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record):
@@ -173,7 +175,15 @@ class MqttDecoder:
     reconnect_initial = 2
     reconnect_max = 60
 
-    def __init__(self, topic: str, broker: str, port: int, processor: LineProtocolProcessor | SQLiteProcessor, dlq: DeadLetterQueue) -> None:
+    def __init__(
+        self,
+        topic: str,
+        broker: str,
+        port: int,
+        processor: LineProtocolProcessor | SQLiteProcessor,
+        dlq: DeadLetterQueue,
+        mqtt_security: MqttSecurityConfig,
+    ) -> None:
         self.topic = topic
         self.broker = broker
         self.port = port
@@ -181,58 +191,48 @@ class MqttDecoder:
         self.dlq = dlq
         self.msg_count = 0
         self.stop_event = threading.Event()
-        self.reconnect_delay = self.reconnect_initial
-        self.client = mqtt.Client(userdata={"decoder": self})
+        self.client = mqtt.Client(
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+            userdata={"decoder": self},
+            protocol=mqtt.MQTTv311,
+        )
+        self.client.reconnect_delay_set(min_delay=self.reconnect_initial, max_delay=self.reconnect_max)
+        mqtt_security.configure_client(self.client)
+        self.mqtt_security = mqtt_security
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
 
     @staticmethod
-    def _on_connect(client, userdata, flags, rc):
-        userdata["decoder"].on_connect(client, flags, rc)
+    def _on_connect(client, userdata, flags, reason_code, properties):
+        userdata["decoder"].on_connect(client, flags, reason_code)
 
     @staticmethod
-    def _on_disconnect(client, userdata, rc):
-        userdata["decoder"].on_disconnect(client, rc)
+    def _on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
+        userdata["decoder"].on_disconnect(client, reason_code)
 
     @staticmethod
     def _on_message(client, userdata, msg):
         userdata["decoder"].on_message(msg)
 
-    def on_connect(self, client: mqtt.Client, flags: dict[str, Any], rc: int) -> None:
-        if rc == 0:
-            self.reconnect_delay = self.reconnect_initial
+    def on_connect(self, client: mqtt.Client, flags: dict[str, Any], reason_code: Any) -> None:
+        if not reason_code.is_failure:
             client.subscribe(self.topic)
             logger.info(
                 "Connected and subscribed",
                 extra={"extra": {"topic": self.topic, "broker": self.broker, "port": self.port}},
             )
             return
-        logger.error("MQTT connect failed", extra={"extra": {"topic": self.topic, "rc": rc}})
+        logger.error("MQTT connect failed", extra={"extra": {"topic": self.topic, "reason_code": str(reason_code)}})
 
-    def on_disconnect(self, client: mqtt.Client, rc: int) -> None:
-        if rc == 0 or self.stop_event.is_set():
+    def on_disconnect(self, client: mqtt.Client, reason_code: Any) -> None:
+        if not reason_code.is_failure or self.stop_event.is_set():
             logger.info("MQTT disconnected cleanly.", extra={"extra": {"topic": self.topic}})
             return
-        delay = self.reconnect_delay
         logger.warning(
-            "MQTT disconnected unexpectedly; will reconnect",
-            extra={"extra": {"topic": self.topic, "rc": rc, "retry_in_s": delay}},
+            "MQTT disconnected unexpectedly; network loop will reconnect with exponential backoff",
+            extra={"extra": {"topic": self.topic, "reason_code": str(reason_code)}},
         )
-        while not self.stop_event.wait(delay):
-            next_delay = min(delay * 2, self.reconnect_max)
-            try:
-                client.reconnect()
-                logger.info("MQTT reconnected successfully.", extra={"extra": {"topic": self.topic}})
-                self.reconnect_delay = self.reconnect_initial
-                return
-            except Exception as exc:  # pragma: no cover - network-dependent
-                logger.warning(
-                    "Reconnect attempt failed; retrying",
-                    extra={"extra": {"topic": self.topic, "error": str(exc), "next_retry_s": next_delay}},
-                )
-                delay = next_delay
-                self.reconnect_delay = delay
 
     def on_message(self, msg) -> None:
         received_at = utcnow_iso()
@@ -283,7 +283,15 @@ class MqttDecoder:
         signal.signal(signal.SIGINT, _handle_stop)
         logger.info(
             "Decoder starting",
-            extra={"extra": {"topic": self.topic, "broker": self.broker, "port": self.port}},
+            extra={
+                "extra": {
+                    "topic": self.topic,
+                    "broker": self.broker,
+                    "port": self.port,
+                    "tls_enabled": self.mqtt_security.tls,
+                    "auth_enabled": bool(self.mqtt_security.username),
+                }
+            },
         )
         try:
             self.client.connect(self.broker, self.port, keepalive=60)
@@ -377,12 +385,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="MQTT PLC point data decoder with auto-reconnect, processor plugins, and structured logging."
     )
-    parser.add_argument("--topic", type=str, default=DEFAULT_TOPIC, help=f"MQTT subscription topic (default: '{DEFAULT_TOPIC}')")
-    parser.add_argument("--broker", type=str, default="localhost", help="MQTT broker hostname or IP.")
-    parser.add_argument("--port", type=int, default=1883, help="MQTT broker port.")
-    parser.add_argument("--processor", choices=["lineprotocol", "sqlite"], default="lineprotocol", help="Point processor plugin to use.")
-    parser.add_argument("--sqlite-path", type=str, default="/var/lib/plc-edgeflow/points.db", help="SQLite destination when using the sqlite processor.")
-    parser.add_argument("--dlq-path", type=str, default="/var/lib/plc-edgeflow/decoder-dlq.db", help="SQLite dead-letter queue path.")
+    parser.add_argument("--topic", type=str, default=env_text("PLC_MQTT_TOPIC", DEFAULT_TOPIC), help=f"MQTT subscription topic (default: '{DEFAULT_TOPIC}')")
+    parser.add_argument("--broker", type=str, default=env_text("PLC_MQTT_BROKER", "localhost"), help="MQTT broker hostname or IP.")
+    parser.add_argument("--port", type=int, default=env_int("PLC_MQTT_PORT", 1883), help="MQTT broker port.")
+    parser.add_argument("--processor", choices=["lineprotocol", "sqlite"], default=env_text("PLC_DECODER_PROCESSOR", "lineprotocol"), help="Point processor plugin to use.")
+    parser.add_argument("--sqlite-path", type=str, default=env_text("PLC_DECODER_SQLITE_PATH", "/var/lib/plc-edgeflow/points.db"), help="SQLite destination when using the sqlite processor.")
+    parser.add_argument("--dlq-path", type=str, default=env_text("PLC_DECODER_DLQ_PATH", "/var/lib/plc-edgeflow/decoder-dlq.db"), help="SQLite dead-letter queue path.")
+    add_mqtt_security_arguments(parser)
     return parser
 
 
@@ -393,10 +402,18 @@ def build_processor(args: argparse.Namespace) -> LineProtocolProcessor | SQLiteP
 
 
 def main() -> int:
-    args = build_parser().parse_args()
+    parser = build_parser()
+    args = parser.parse_args()
+    if not 1 <= args.port <= 65535:
+        parser.error("--port must be between 1 and 65535")
+    mqtt_security = MqttSecurityConfig.from_namespace(args)
+    try:
+        mqtt_security.validate()
+    except ValueError as exc:
+        parser.error(str(exc))
     processor = build_processor(args)
     dlq = DeadLetterQueue(args.dlq_path)
-    decoder = MqttDecoder(args.topic, args.broker, args.port, processor, dlq)
+    decoder = MqttDecoder(args.topic, args.broker, args.port, processor, dlq, mqtt_security)
     return decoder.run()
 
 
