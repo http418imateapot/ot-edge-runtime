@@ -1,4 +1,4 @@
 -r requirements.txt
 -e .
 build==1.2.2.post1
-pytest==8.3.5
+pytest==9.1.1
