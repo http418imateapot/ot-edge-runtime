@@ -70,3 +70,20 @@ jobs:
         run: |
           python -m pip install dist/*.whl
           python -c "import adjust, decoder, plc_config"
+
+  deployment:
+    name: Verify systemd deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare verification paths
+        run: |
+          sudo useradd --system --home /var/lib/plc-edgeflow --shell /usr/sbin/nologin plcmon
+          sudo install -d /opt/plc-edgeflow/venv/bin /etc/plc-edgeflow
+          sudo ln -s /bin/true /opt/plc-edgeflow/venv/bin/plc-adjust
+          sudo ln -s /bin/true /opt/plc-edgeflow/venv/bin/plc-decoder
+          sudo touch /etc/plc-edgeflow/adjust.env
+
+      - name: Verify systemd units
+        run: systemd-analyze verify systemd/plc-adjust.service systemd/plc-decoder@.service
