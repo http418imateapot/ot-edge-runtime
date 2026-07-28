@@ -1,5 +1,6 @@
 # ot-edge-runtime
 
+[![CI](https://github.com/http418imateapot/ot-edge-runtime/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/ot-edge-runtime/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 **A container runtime and supervision toolkit for OT edge workloads on industrial single-board computers.**
@@ -76,8 +77,9 @@ cd ot-edge-runtime
 ```bash
 sudo apt-get install -y runc cgroup-tools
 python -m venv .venv && . .venv/bin/activate
-pip install -e "runtime/[dev]"
-python -m pytest runtime/
+cd runtime
+pip install -e ".[dev]"
+python -m pytest
 ```
 
 **`autoscale/` — PLC traffic autoscaler**
@@ -85,8 +87,9 @@ python -m pytest runtime/
 ```bash
 # BCC comes from the system package manager, not from pip
 sudo apt-get install -y python3-bpfcc
-pip install -e "autoscale/[dev]"
-python -m pytest autoscale/
+cd autoscale
+pip install -e ".[dev]"
+python -m pytest
 ```
 
 **`edgeconf/core/` — configuration engine**
@@ -132,10 +135,12 @@ Adopting one component does not require adopting the others.
 - **Linux only**, and in places kernel-version sensitive — the eBPF probe in
   `autoscale/` in particular.
 - **Not yet a unified project.** The merge preserved four independent builds,
-  test suites and version numbers. There is no repository-wide CI, no shared
-  release train, and no cross-component integration test. The per-component CI
-  workflows inherited from the source repositories are kept under each
-  component's `.github/` directory, where GitHub does not execute them.
+  test suites and version numbers. There is no shared release train and no
+  cross-component integration test; the repository-wide workflow in
+  `.github/workflows/ci.yml` simply drives each component's own build. The
+  per-component CI workflows inherited from the source repositories are kept
+  under each component's `.github/` directory, where GitHub does not execute
+  them.
 
 ## History and provenance
 

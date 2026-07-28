@@ -1,5 +1,6 @@
 # ot-edge-runtime
 
+[![CI](https://github.com/http418imateapot/ot-edge-runtime/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/ot-edge-runtime/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 **工業單板電腦 (SBC) 上的 OT 邊緣工作負載容器執行與監管工具組。**
@@ -69,8 +70,9 @@ cd ot-edge-runtime
 ```bash
 sudo apt-get install -y runc cgroup-tools
 python -m venv .venv && . .venv/bin/activate
-pip install -e "runtime/[dev]"
-python -m pytest runtime/
+cd runtime
+pip install -e ".[dev]"
+python -m pytest
 ```
 
 **`autoscale/` — PLC 流量自動調控**
@@ -78,8 +80,9 @@ python -m pytest runtime/
 ```bash
 # BCC 由系統套件管理器提供，不經由 pip 安裝
 sudo apt-get install -y python3-bpfcc
-pip install -e "autoscale/[dev]"
-python -m pytest autoscale/
+cd autoscale
+pip install -e ".[dev]"
+python -m pytest
 ```
 
 **`edgeconf/core/` — 設定引擎**
@@ -119,8 +122,9 @@ make -C edgeconf/patterns IPC_BACKEND=ubus   # OpenWrt / ubus 後端
   Apache-2.0 不提供保固與賠償，導入驗證仍屬系統整合方的責任。
 - **僅支援 Linux**，且部分功能對核心版本敏感——尤其是 `autoscale/` 的 eBPF 探針。
 - **尚未整合為單一專案。** 本次合併保留了四套獨立的建置、測試與版本編號，沒有
-  跨 repo 的 CI、沒有共用的發版流程，也沒有跨元件整合測試。原始 repo 的 CI
-  workflow 保留在各元件的 `.github/` 目錄下，GitHub 不會在該位置執行它們。
+  共用的發版流程，也沒有跨元件整合測試；根目錄的 `.github/workflows/ci.yml`
+  僅是分別驅動各元件既有的建置方式。原始 repo 的 CI workflow 保留在各元件的
+  `.github/` 目錄下，GitHub 不會在該位置執行它們。
 
 ## 沿革與來源
 
