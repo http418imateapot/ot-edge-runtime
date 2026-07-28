@@ -1,0 +1,8 @@
+include README.md
+include VERSION
+include CHANGELOG.md
+include SECURITY.md
+include CONTRIBUTING.md
+include config.json
+recursive-include app *.sh
+recursive-include systemd *.service

@@ -58,5 +58,5 @@ First stable release. All P0 / P1 / P2 hardening tasks completed and verified on
 
 ---
 
-[Unreleased]: https://github.com/http418imateapot/plc-ebpf-autoscaler/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/http418imateapot/plc-ebpf-autoscaler/releases/tag/v1.0.0
+[Unreleased]: https://github.com/http418imateapot/ot-edge-runtime/commits/main/autoscale
+[1.0.0]: https://github.com/http418imateapot/ot-edge-runtime/commits/main/autoscale

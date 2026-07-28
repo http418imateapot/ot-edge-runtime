@@ -1,0 +1,37 @@
+[Unit]
+Description=OT Container Management REST API
+Documentation=https://github.com/http418imateapot/ot-edge-runtime
+After=network.target
+
+[Service]
+Type=simple
+User=ot-api
+Group=ot-api
+
+# Load API_KEY and other sensitive settings from an external file.
+# Create /etc/runc-edge-api/env before enabling this service:
+#   sudo mkdir -p /etc/runc-edge-api
+#   echo "API_KEY=$(openssl rand -hex 32)" | sudo tee /etc/runc-edge-api/env
+#   sudo chmod 600 /etc/runc-edge-api/env
+EnvironmentFile=/etc/runc-edge-api/env
+Environment=BUNDLE_PATH=/opt/runc-edge-api
+Environment=RUNC_TIMEOUT=30
+Environment=STOP_GRACE_PERIOD=10
+
+WorkingDirectory=/opt/runc-edge-api
+ExecStart=/opt/runc-edge-api/venv/bin/runc-edge-api --host 127.0.0.1 --port 8000
+
+# Restart policy suitable for OT environments (high availability)
+Restart=on-failure
+RestartSec=5s
+
+# Harden the service: grant only the capabilities runc needs
+NoNewPrivileges=true
+AmbientCapabilities=CAP_SYS_ADMIN
+
+# Limit resources of the API service itself
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

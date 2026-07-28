@@ -1,0 +1,76 @@
+name: CI
+
+# Repository-wide build and test for the four merged components. Each component
+# keeps its own build system; this workflow drives them exactly as the README
+# quick start documents.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    name: runtime (runc-edge-api)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package with dev extras
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: python -m pytest
+
+  autoscale:
+    name: autoscale (plc-ebpf-autoscaler)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: autoscale
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package with dev extras
+        # The BCC eBPF bindings come from the system package manager and are not
+        # required by the test suite, which stubs them out.
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: python -m pytest
+
+  edgeconf-core:
+    name: edgeconf/core (robust-binary-config)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+      - name: Build
+        run: make -C edgeconf/core
+      - name: Test (ctest)
+        run: make -C edgeconf/core test
+
+  edgeconf-patterns:
+    name: edgeconf/patterns (robust-config-exchange)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libdbus-1-dev
+      - name: Build (D-Bus back-end)
+        run: make -C edgeconf/patterns

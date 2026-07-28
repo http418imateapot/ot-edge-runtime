@@ -24,7 +24,7 @@ Vulnerabilities whose root cause is in BCC, paho-mqtt, Mosquitto, or the Linux k
 Send a report by one of these methods:
 
 1. **GitHub private vulnerability reporting (preferred)**  
-   Use the [Security Advisories](https://github.com/http418imateapot/plc-ebpf-autoscaler/security/advisories/new) page to submit a draft advisory. Only repository maintainers can see it.
+   Use the [Security Advisories](https://github.com/http418imateapot/ot-edge-runtime/security/advisories/new) page to submit a draft advisory. Only repository maintainers can see it.
 
 2. **Email**  
    If GitHub private reporting is unavailable, email the maintainer directly. You can find the contact address in the git commit history or in the `[authors]` section of `pyproject.toml`.
