@@ -55,7 +55,7 @@ Be respectful and constructive. Issues and pull requests that are disrespectful 
 ### Install in editable mode
 
 ```bash
-git clone https://github.com/http418imateapot/plc-ebpf-autoscaler.git
+git clone https://github.com/http418imateapot/ot-edge-runtime.git
 cd plc-ebpf-autoscaler
 
 # Create and activate a virtual environment (recommended)

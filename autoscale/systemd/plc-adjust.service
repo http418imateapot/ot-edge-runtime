@@ -1,6 +1,6 @@
 [Unit]
 Description=PLC EdgeFlow eBPF Monitor and Decoder Adjuster
-Documentation=https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/docs/PRODUCTION_DEPLOYMENT.md
+Documentation=https://github.com/http418imateapot/ot-edge-runtime/blob/main/autoscale/docs/PRODUCTION_DEPLOYMENT.md
 After=network-online.target
 Wants=network-online.target
 

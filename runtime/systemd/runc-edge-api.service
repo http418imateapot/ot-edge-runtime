@@ -1,6 +1,6 @@
 [Unit]
 Description=OT Container Management REST API
-Documentation=https://github.com/http418imateapot/runc-edge-api
+Documentation=https://github.com/http418imateapot/ot-edge-runtime
 After=network.target
 
 [Service]
