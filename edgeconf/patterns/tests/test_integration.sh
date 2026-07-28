@@ -75,6 +75,12 @@ sleep 0.5   # give it time to subscribe
 
 sleep 1.0   # allow inotify + D-Bus propagation
 
+# Delete a key by editing the file directly, the way an OTA push or an
+# operator would. The daemon must notice the disappearance, not just changes.
+grep -v "^port=" "$CONFIG" > "$CONFIG.edit" && mv "$CONFIG.edit" "$CONFIG"
+
+sleep 1.0   # allow inotify + D-Bus propagation
+
 # Stop watch and dashboard
 kill "$WATCH_PID" "$DASHBOARD_PID" 2>/dev/null || true
 wait "$WATCH_PID"     2>/dev/null || true
@@ -108,6 +114,13 @@ for pair in "host=edge-01" "port=8080" "enabled=true"; do
 done
 
 # ---------------------------------------------------------------------------
+# Validate the removal was broadcast
+if grep -q "key=port removed" "$DASHBOARD_LOG" 2>/dev/null; then
+    pass "Dashboard received removal for key=port"
+else
+    fail "Dashboard did NOT receive removal for key=port"
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

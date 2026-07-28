@@ -71,9 +71,21 @@ jobs:
       - name: Install build toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libdbus-1-dev dbus
+          sudo apt-get install -y build-essential pkg-config libdbus-1-dev dbus cppcheck
       - name: Build (D-Bus transport adapter)
         run: make -C edgeconf/patterns
+      - name: cppcheck static analysis
+        # Hoisted here from edgeconf/patterns/.github/workflows/ci.yml, which
+        # GitHub never executes because it is not at the repository root.
+        run: |
+          cppcheck --enable=warning,style,performance,portability \
+                   --error-exitcode=1 \
+                   --inline-suppr \
+                   --suppress=missingIncludeSystem \
+                   --suppress=unusedFunction \
+                   --suppress=unmatchedSuppression \
+                   -I edgeconf/patterns/include -I edgeconf/patterns/src \
+                   edgeconf/patterns/src
       - name: Reject an unimplemented transport
         # The Makefile must fail loudly rather than silently building the
         # default adapter when an unknown IPC_BACKEND is requested.

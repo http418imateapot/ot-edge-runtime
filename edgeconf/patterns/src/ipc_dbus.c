@@ -9,7 +9,10 @@
  * -----------
  * Each delta is broadcast as a D-Bus signal carrying a single string argument:
  *
- *   {"interface_version":1,"key":"sample_rate","value":"120"}
+ *   {"interface_version":2,"key":"sample_rate","value":"120","deleted":false}
+ *
+ * `deleted` distinguishes "this key is gone" from "this key is now the empty
+ * string". Version 1 had no such field and no way to express a removal.
  *
  * The adapter owns this encoding; the daemon above the port never sees it.
  * `interface_version` is bumped whenever the payload schema changes, so a
@@ -39,7 +42,7 @@
 #define DBUS_OBJECT_PATH   "/com/example/RobustConfig"
 #define DBUS_IFACE_NAME    "com.example.RobustConfig"
 #define DBUS_SIGNAL_NAME   "ConfigChanged"
-#define DBUS_IFACE_VERSION 1
+#define DBUS_IFACE_VERSION 2
 
 /* Worst case each byte expands to \u00XX (6 chars), plus JSON scaffolding
  * and a comfortable margin. */
@@ -54,6 +57,7 @@ typedef struct {
     ipc_event_cb    cb;
     void           *user;
     int             subscribed;
+    int             owns_name;
 } dbus_state_t;
 
 /* -----------------------------------------------------------------
@@ -219,10 +223,43 @@ static void dbus_close(ipc_channel_t *ch) {
 /* -----------------------------------------------------------------
  * publish
  * ----------------------------------------------------------------*/
+/* Claim the well-known bus name. Done on first publish rather than in open(),
+ * because a subscriber opens a channel too and must not contend for the name.
+ * Owning it is what lets subscribers filter on sender= and reject forged
+ * ConfigChanged signals from any other process on the bus. */
+static ipc_status_t dbus_acquire_name(dbus_state_t *st) {
+    if (st->owns_name)
+        return IPC_OK;
+
+    DBusError err;
+    dbus_error_init(&err);
+
+    int rc = dbus_bus_request_name(st->conn, DBUS_IFACE_NAME,
+                                   DBUS_NAME_FLAG_DO_NOT_QUEUE, &err);
+    if (dbus_error_is_set(&err)) {
+        log_err("dbus: requesting name %s failed: %s",
+                DBUS_IFACE_NAME, err.message);
+        dbus_error_free(&err);
+        return IPC_ERR_PUBLISH;
+    }
+    if (rc != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
+        log_err("dbus: %s is already owned by another process; refusing to publish", DBUS_IFACE_NAME);
+        return IPC_ERR_PUBLISH;
+    }
+
+    st->owns_name = 1;
+    log_debug("dbus: owns %s", DBUS_IFACE_NAME);
+    return IPC_OK;
+}
+
 static ipc_status_t dbus_publish(ipc_channel_t *ch, const ipc_kv_t *kv) {
     dbus_state_t *st = ch->state;
     if (st == NULL || st->conn == NULL)
         return IPC_ERR_STATE;
+
+    ipc_status_t nst = dbus_acquire_name(st);
+    if (nst != IPC_OK)
+        return nst;
 
     char esc_key[CONFIG_MAX_KEY * 6 + 1];
     char esc_val[CONFIG_MAX_VALUE * 6 + 1];
@@ -235,8 +272,10 @@ static ipc_status_t dbus_publish(ipc_channel_t *ch, const ipc_kv_t *kv) {
 
     char payload[MAX_PAYLOAD];
     int n = snprintf(payload, sizeof(payload),
-                     "{\"interface_version\":%d,\"key\":\"%s\",\"value\":\"%s\"}",
-                     DBUS_IFACE_VERSION, esc_key, esc_val);
+                     "{\"interface_version\":%d,\"key\":\"%s\","
+                     "\"value\":\"%s\",\"deleted\":%s}",
+                     DBUS_IFACE_VERSION, esc_key, esc_val,
+                     kv->deleted ? "true" : "false");
     if (n < 0 || (size_t)n >= sizeof(payload)) {
         log_err("dbus: payload truncated; delta dropped");
         return IPC_ERR_PUBLISH;
@@ -261,7 +300,8 @@ static ipc_status_t dbus_publish(ipc_channel_t *ch, const ipc_kv_t *kv) {
         rc = IPC_ERR_PUBLISH;
     } else {
         dbus_connection_flush(st->conn);
-        log_debug("dbus: published key=%s", kv->key);
+        log_debug("dbus: published key=%s%s", kv->key,
+                  kv->deleted ? " (removed)" : "");
     }
 
     dbus_message_unref(msg);
@@ -276,9 +316,13 @@ static ipc_status_t dbus_subscribe(ipc_channel_t *ch, ipc_event_cb cb, void *use
     if (st == NULL || st->conn == NULL)
         return IPC_ERR_STATE;
 
+    /* sender= is the part that matters for trust: without it the bus delivers a
+     * ConfigChanged from *any* process, and a local unprivileged process can
+     * forge config changes that every subscriber accepts as genuine. */
     char rule[256];
-    snprintf(rule, sizeof(rule), "type='signal',interface='%s',member='%s'",
-             DBUS_IFACE_NAME, DBUS_SIGNAL_NAME);
+    snprintf(rule, sizeof(rule),
+             "type='signal',sender='%s',interface='%s',member='%s'",
+             DBUS_IFACE_NAME, DBUS_IFACE_NAME, DBUS_SIGNAL_NAME);
 
     DBusError err;
     dbus_error_init(&err);
@@ -347,8 +391,14 @@ static ipc_status_t dbus_run(ipc_channel_t *ch) {
                 continue;
             }
 
+            /* `deleted` is a JSON boolean, not a string, so it is matched
+             * directly rather than through json_extract(). A v1 payload has no
+             * such field and reads as not-deleted, which is the old meaning. */
+            int deleted = (strstr(payload, "\"deleted\":true") != NULL);
+
             if (st->cb != NULL) {
-                ipc_kv_t kv = { .key = key, .value = value };
+                ipc_kv_t kv = { .key = key, .value = value,
+                                .deleted = deleted };
                 st->cb(&kv, st->user);
             }
 

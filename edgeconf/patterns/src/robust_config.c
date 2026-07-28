@@ -56,7 +56,7 @@ static void print_usage(const char *prog) {
         "\n"
         "Modes:\n"
         "  write     Update one config key (requires --key and --value)\n"
-        "  watch     Monitor config file and broadcast key/value deltas\n"
+        "  watch     Monitor config file; broadcast key/value deltas and removals\n"
         "  dashboard Receive config deltas and display them\n"
         "  dump      Print current config to stdout\n"
         "\n"
@@ -335,6 +335,26 @@ static int mode_watch(const options_t *opts, const char *config_path) {
         if (n > 0)
             log_info("%d key(s) changed in '%s'", n, config_path);
 
+        /* A key deleted from the file is a change too. Without this a
+         * subscriber would keep serving the retired value forever. */
+        config_pair_t removed[CONFIG_MAX_PAIRS];
+        int rm = config_removed(&prev, &cur, removed, CONFIG_MAX_PAIRS);
+
+        for (int i = 0; i < rm; i++) {
+            if (opts->dry_run) {
+                printf("[dry-run] Removal: key=%s\n", removed[i].key);
+            } else {
+                ipc_status_t rst = ipc_publish_removal(&ch, removed[i].key,
+                                                       removed[i].value);
+                if (rst != IPC_OK)
+                    log_warn("Publishing removal of key '%s' failed: %s",
+                             removed[i].key, ipc_strerror(rst));
+            }
+        }
+
+        if (rm > 0)
+            log_info("%d key(s) removed from '%s'", rm, config_path);
+
         prev = cur;
         watchdog_ping();
     }
@@ -352,7 +372,11 @@ static int mode_watch(const options_t *opts, const char *config_path) {
  * adapter hands us a key and a value, and we decide how to show them. */
 static void on_config_delta(const ipc_kv_t *kv, void *user) {
     (void)user;
-    printf("ConfigChanged: key=%s value=%s\n", kv->key, kv->value);
+    if (kv->deleted)
+        printf("ConfigChanged: key=%s removed (was %s)\n",
+               kv->key, kv->value);
+    else
+        printf("ConfigChanged: key=%s value=%s\n", kv->key, kv->value);
     fflush(stdout);
 }
 

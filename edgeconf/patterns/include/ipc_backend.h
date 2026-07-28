@@ -76,7 +76,8 @@ typedef enum {
  * ----------------------------------------------------------------*/
 typedef struct {
     const char *key;
-    const char *value;
+    const char *value;   /* last known value; empty is a legal value          */
+    int         deleted; /* non-zero: the key disappeared from the config     */
 } ipc_kv_t;
 
 /* Invoked by ipc_run() for every delta received. The ipc_kv_t and the strings
@@ -121,6 +122,12 @@ void         ipc_close    (ipc_channel_t *ch);
 ipc_status_t ipc_publish  (ipc_channel_t *ch, const char *key, const char *value);
 ipc_status_t ipc_subscribe(ipc_channel_t *ch, ipc_event_cb cb, void *user);
 ipc_status_t ipc_run      (ipc_channel_t *ch);
+
+/* Announce that `key` is gone. Carries the last known value so a subscriber
+ * can tell which value it is retiring; `deleted` is what distinguishes this
+ * from an ordinary update to an empty string. */
+ipc_status_t ipc_publish_removal(ipc_channel_t *ch, const char *key,
+                                 const char *last_value);
 
 /* Human-readable form of a status code. */
 const char *ipc_strerror(ipc_status_t st);

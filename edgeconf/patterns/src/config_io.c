@@ -132,7 +132,11 @@ int config_read(const char *path, config_t *cfg) {
         return -1;
     }
 
-    /* Shared lock: may coexist with other readers; blocks exclusive writers. */
+    /* Shared lock. Note what this does NOT do: config_write_atomic() writes a
+     * separate temp file and rename()s over this path, so it never touches the
+     * inode we hold here — consistency against our own writer comes from the
+     * rename being atomic, not from this lock. The lock is kept because it does
+     * protect against any other tool that edits the file in place. */
     if (flock(fd, LOCK_SH) == -1) {
         log_err("config_read: cannot acquire shared lock on '%s': %m", path);
         close(fd);
@@ -258,18 +262,11 @@ int config_write_atomic(const char *path, const config_t *cfg) {
         return -1;
     }
 
-    /* Exclusive lock on tmp file: only one writer at a time */
-    if (flock(fd, LOCK_EX) == -1) {
-        log_err("config_write_atomic: cannot acquire exclusive lock: %m");
-        close(fd);
-        unlink(tmp_path);
-        return -1;
-    }
-
+    /* No lock is taken on the temp file: tmp_path already contains our pid,
+     * so no other process can be writing to it. */
     FILE *fp = fdopen(fd, "w");
     if (!fp) {
         log_err("config_write_atomic: fdopen failed: %m");
-        flock(fd, LOCK_UN);
         close(fd);
         unlink(tmp_path);
         return -1;
@@ -279,9 +276,27 @@ int config_write_atomic(const char *path, const config_t *cfg) {
     for (int i = 0; i < cfg->count; i++)
         fprintf(fp, "%s=%s\n", cfg->pairs[i].key, cfg->pairs[i].value);
 
-    fflush(fp);
-    /* Release lock before rename so readers on the final path are not blocked */
-    flock(fd, LOCK_UN);
+    /* Push stdio's buffer down to the file descriptor... */
+    if (fflush(fp) != 0) {
+        log_err("config_write_atomic: fflush failed: %m");
+        fclose(fp);
+        unlink(tmp_path);
+        return -1;
+    }
+
+    /* ...and then force it to stable storage. rename() below is atomic with
+     * respect to other processes, but that is a different property from
+     * surviving a power cut: without this fsync the rename can reach the disk
+     * before the data does, and the box comes back with an empty or truncated
+     * config. On a factory device that loses power without warning, that is
+     * the failure this whole write path exists to prevent. */
+    if (fsync(fd) == -1) {
+        log_err("config_write_atomic: fsync of '%s' failed: %m", tmp_path);
+        fclose(fp);
+        unlink(tmp_path);
+        return -1;
+    }
+
     fclose(fp);   /* closes fd */
 
     /* Atomic rename: readers either see old or new, never a partial write */
@@ -292,7 +307,39 @@ int config_write_atomic(const char *path, const config_t *cfg) {
         return -1;
     }
 
+    /* The rename itself is a directory operation, so the directory entry needs
+     * its own fsync to be durable. Failure here is logged but not fatal: the
+     * data is already written and visible. */
+    int dfd = open(slash ? dir : ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (dfd == -1) {
+        log_warn("config_write_atomic: cannot open directory to fsync: %m");
+    } else {
+        if (fsync(dfd) == -1)
+            log_warn("config_write_atomic: directory fsync failed: %m");
+        close(dfd);
+    }
+
     return 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * config_removed
+ * -------------------------------------------------------------------------*/
+int config_removed(const config_t *old_cfg, const config_t *new_cfg,
+                   config_pair_t *removed, int max_removed) {
+    int n = 0;
+    for (int i = 0; i < old_cfg->count && n < max_removed; i++) {
+        if (config_get(new_cfg, old_cfg->pairs[i].key) != NULL)
+            continue;
+        strncpy(removed[n].key,   old_cfg->pairs[i].key,
+                sizeof(removed[n].key)   - 1);
+        strncpy(removed[n].value, old_cfg->pairs[i].value,
+                sizeof(removed[n].value) - 1);
+        removed[n].key[sizeof(removed[n].key)     - 1] = '\0';
+        removed[n].value[sizeof(removed[n].value) - 1] = '\0';
+        n++;
+    }
+    return n;
 }
 
 /* ---------------------------------------------------------------------------

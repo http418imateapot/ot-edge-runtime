@@ -1,6 +1,6 @@
 [Unit]
-Description=Robust Config Sync Daemon — watches config file and broadcasts D-Bus deltas
-Documentation=https://github.com/http418imateapot/robust-config-exchange
+Description=Robust Config Sync Daemon — watches config file and broadcasts config deltas
+Documentation=https://github.com/http418imateapot/ot-edge-runtime/blob/main/docs/edgeconf-patterns.md
 After=dbus.service
 Requires=dbus.service
 
@@ -15,7 +15,7 @@ Type=notify
 User=root
 ExecStart=/usr/local/bin/robust_config \
     --config /etc/robust-config/config.conf \
-    --bus system \
+    --ipc-address system \
     --log-level info \
     watch
 Restart=on-failure

@@ -78,8 +78,20 @@ int config_parse_line(const char *line,
 
 /* Compare old_cfg with new_cfg.  For every key whose value changed (or that
  * is new in new_cfg), append a config_pair_t to the changed[] array.
- * Returns the number of changed pairs (≤ max_changed). */
+ * Returns the number of changed pairs (≤ max_changed).
+ *
+ * Reports additions and modifications only; keys that disappeared from the
+ * file are reported by config_removed(). */
 int config_diff(const config_t *old_cfg, const config_t *new_cfg,
                 config_pair_t *changed, int max_changed);
+
+/* Companion to config_diff: for every key present in old_cfg but absent from
+ * new_cfg, append a config_pair_t (carrying the key and its last known value)
+ * to removed[].  Returns the number of removed keys (≤ max_removed).
+ *
+ * Without this, deleting a key from the config file produces no event at all
+ * and every subscriber keeps serving its last known value indefinitely. */
+int config_removed(const config_t *old_cfg, const config_t *new_cfg,
+                   config_pair_t *removed, int max_removed);
 
 #endif /* CONFIG_IO_H */

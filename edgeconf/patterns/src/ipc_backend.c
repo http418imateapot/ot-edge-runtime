@@ -50,7 +50,20 @@ ipc_status_t ipc_publish(ipc_channel_t *ch, const char *key, const char *value) 
         return IPC_ERR_STATE;
     }
 
-    ipc_kv_t kv = { .key = key, .value = value };
+    ipc_kv_t kv = { .key = key, .value = value, .deleted = 0 };
+    return ch->transport->publish(ch, &kv);
+}
+
+ipc_status_t ipc_publish_removal(ipc_channel_t *ch, const char *key,
+                                 const char *last_value) {
+    if (ch == NULL || ch->transport == NULL)
+        return IPC_ERR_STATE;
+    if (ch->transport->publish == NULL) {
+        log_err("ipc: transport '%s' has no publish()", ch->transport->name);
+        return IPC_ERR_STATE;
+    }
+
+    ipc_kv_t kv = { .key = key, .value = last_value, .deleted = 1 };
     return ch->transport->publish(ch, &kv);
 }
 

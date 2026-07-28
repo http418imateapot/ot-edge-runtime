@@ -38,16 +38,20 @@ static void crash_handler(int sig, siginfo_t *info, void *ucontext) {
     /* Fixed header */
     write(STDERR_FILENO, MSG_HEADER, sizeof(MSG_HEADER) - 1);
 
-    /* Signal name without strsignal() */
+    /* Signal name without strsignal(). The length comes from sizeof on the
+     * static array rather than strlen(): strlen() is not on POSIX's list of
+     * async-signal-safe functions, and staying inside that list is this file's
+     * entire reason to exist. */
     const char *signame;
+    size_t      signame_len;
     switch (sig) {
-    case SIGSEGV: signame = MSG_SIGSEGV; break;
-    case SIGABRT: signame = MSG_SIGABRT; break;
-    case SIGFPE:  signame = MSG_SIGFPE;  break;
-    case SIGBUS:  signame = MSG_SIGBUS;  break;
-    default:      signame = MSG_UNKNOWN; break;
+    case SIGSEGV: signame = MSG_SIGSEGV; signame_len = sizeof(MSG_SIGSEGV) - 1; break;
+    case SIGABRT: signame = MSG_SIGABRT; signame_len = sizeof(MSG_SIGABRT) - 1; break;
+    case SIGFPE:  signame = MSG_SIGFPE;  signame_len = sizeof(MSG_SIGFPE)  - 1; break;
+    case SIGBUS:  signame = MSG_SIGBUS;  signame_len = sizeof(MSG_SIGBUS)  - 1; break;
+    default:      signame = MSG_UNKNOWN; signame_len = sizeof(MSG_UNKNOWN) - 1; break;
     }
-    write(STDERR_FILENO, signame, strlen(signame));
+    write(STDERR_FILENO, signame, signame_len);
 
     /* Stack trace */
     write(STDERR_FILENO, MSG_TRACE, sizeof(MSG_TRACE) - 1);
@@ -62,7 +66,12 @@ static void crash_handler(int sig, siginfo_t *info, void *ucontext) {
 }
 
 void crash_handler_install(void) {
+    /* Zero the whole struct before use: it has members beyond the three set
+     * here (sa_restorer on glibc, plus padding), and handing uninitialised
+     * bytes to sigaction() is undefined behaviour. */
     struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+
     sa.sa_sigaction = crash_handler;
     sigemptyset(&sa.sa_mask);
     /* SA_RESETHAND: restore SIG_DFL after first delivery (prevents recursion).
