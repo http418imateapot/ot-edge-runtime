@@ -30,6 +30,19 @@ components: use `runc` and cgroups directly for isolation, drive them over an
 authenticated REST API, scale the data-path workload from kernel-level traffic
 signals, and keep configuration on a store that survives an abrupt power cut.
 
+## Factory scenarios
+
+Four situations from the plant floor drove this toolkit. Each is written up in
+full — the symptom, why the usual answer does not fit, what this project does
+instead, and a worked example — in [`docs/scenarios.md`](docs/scenarios.md).
+
+| Scenario | What actually goes wrong | Addressed by |
+|----------|--------------------------|--------------|
+| Acquisition backs up during a high-frequency run | The serial buffer fills and points are dropped. It shows up as gaps in the historian, not as an alarm, and only on the fastest recipes. | [`autoscale/`](autoscale/) |
+| One workload starves the one that matters | A retry storm in an uploader eats CPU and memory until the acquisition path misses its deadline. Nothing crashed, so nothing alerted. | [`runtime/`](runtime/) |
+| A power cut lands mid-write | The box comes back with a truncated config — or worse, starts with a half-parsed one and behaves subtly wrongly. | [`edgeconf/core/`](edgeconf/core/) |
+| A new setting must apply without restarting anything | Restarting five processes to pick up one number means a gap in acquisition, during production. | [`edgeconf/patterns/`](edgeconf/patterns/) |
+
 ## What is inside
 
 | Directory | Language | What it does |
@@ -37,7 +50,7 @@ signals, and keep configuration on a store that survives an abrupt power cut.
 | [`runtime/`](runtime/) | Python | Authenticated REST API for managing Linux-native `runc` containers and their cgroup limits. |
 | [`autoscale/`](autoscale/) | Python | eBPF monitor of PLC serial-port ingress, plus a controller that scales MQTT decoder instances and subscription strategy. |
 | [`edgeconf/core/`](edgeconf/core/) | C | Embedded binary key-value configuration engine — between "SQLite is too heavy" and "a text file is too fragile". |
-| [`edgeconf/patterns/`](edgeconf/patterns/) | C | Fault-tolerant reference patterns for POSIX processes exchanging messages through configuration files (D-Bus / ubus back-ends). |
+| [`edgeconf/patterns/`](edgeconf/patterns/) | C | Config sync daemon for POSIX processes that share settings through a file: atomic writes, cross-process locking, and inotify delta broadcast over a replaceable transport. |
 
 Full documentation for each component lives in [`docs/`](docs/).
 
@@ -103,8 +116,8 @@ make -C edgeconf/core test   # ctest
 
 ```bash
 sudo apt-get install -y libdbus-1-dev
-make -C edgeconf/patterns                    # default D-Bus back-end
-make -C edgeconf/patterns IPC_BACKEND=ubus   # OpenWrt / ubus back-end
+make -C edgeconf/patterns        # builds with the D-Bus adapter (the default)
+make -C edgeconf/patterns test   # unit tests, no bus required
 ```
 
 ## How the components relate
@@ -119,9 +132,9 @@ composition is:
    runtime to make it so.
 3. `edgeconf/core/` holds the settings and thresholds both of them depend on, on
    flash media that will lose power without warning.
-4. `edgeconf/patterns/` documents the fault-tolerant config-file exchange
-   patterns that `edgeconf/core/` grew out of, and remains useful on its own for
-   POSIX applications that already use a config file as their message channel.
+4. `edgeconf/patterns/` distributes a change to those settings to every process
+   at once, without a restart — and does it over a transport you can swap, so the
+   same daemon suits a D-Bus distribution or an OpenWrt/uClinux box.
 
 Adopting one component does not require adopting the others.
 
