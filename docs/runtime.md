@@ -60,7 +60,7 @@ runc-edge-api/
 
 ```bash
 git clone https://github.com/http418imateapot/ot-edge-runtime.git
-cd runc-edge-api
+cd ot-edge-runtime/runtime
 ```
 
 ### 2. 安裝原生容器工具

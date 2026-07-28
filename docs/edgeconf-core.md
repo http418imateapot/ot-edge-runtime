@@ -49,7 +49,7 @@ sudo apt-get install build-essential cmake
 
 ```bash
 git clone https://github.com/http418imateapot/ot-edge-runtime.git
-cd robust-binary-config
+cd ot-edge-runtime/edgeconf/core
 ```
 
 ### 3. 編譯

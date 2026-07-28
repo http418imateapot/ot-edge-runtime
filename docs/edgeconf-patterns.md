@@ -54,7 +54,7 @@ sudo apt-get install build-essential pkg-config libdbus-1-dev
 
 ```bash
 git clone https://github.com/http418imateapot/ot-edge-runtime.git
-cd robust-config-exchange
+cd ot-edge-runtime/edgeconf/patterns
 ```
 
 ### 3. 編譯專案
