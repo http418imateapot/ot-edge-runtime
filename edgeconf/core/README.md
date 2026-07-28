@@ -3,7 +3,7 @@
 [![CI](https://github.com/http418imateapot/robust-binary-config/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/ci.yml)
 [![Static Analysis](https://github.com/http418imateapot/robust-binary-config/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/http418imateapot/robust-binary-config/actions/workflows/static-analysis.yml)
 [![Release](https://img.shields.io/github/v/release/http418imateapot/robust-binary-config)](https://github.com/http418imateapot/robust-binary-config/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../../LICENSE)
 
 **適用 Linux 邊緣裝置的輕量嵌入式 Key-Value 設定引擎**
 
@@ -248,5 +248,5 @@ cmake --build build --parallel
 
 ## License
 
-MIT — 詳見 [LICENSE](LICENSE)
+Apache License 2.0 — 詳見 repo 根目錄的 [LICENSE](../../LICENSE) 與 [NOTICE](../../NOTICE)
 

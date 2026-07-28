@@ -7,8 +7,7 @@ name = "plc-ebpf-autoscaler"
 version = "1.0.0"
 description = "eBPF-based PLC serial-port traffic monitor that dynamically scales MQTT decoder processes on Linux SBCs"
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+license = "Apache-2.0"
 authors = [{ name = "Tinker" }]
 requires-python = ">=3.10"
 keywords = ["plc", "ebpf", "mqtt", "autoscaler", "industrial", "iot"]
@@ -47,11 +46,11 @@ plc-adjust  = "adjust:main"
 plc-decoder = "decoder:main"
 
 [project.urls]
-"Homepage"       = "https://github.com/http418imateapot/plc-ebpf-autoscaler"
-"Bug Tracker"    = "https://github.com/http418imateapot/plc-ebpf-autoscaler/issues"
-"Changelog"      = "https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/CHANGELOG.md"
-"Security Policy"= "https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/SECURITY.md"
-"Documentation"  = "https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/docs/PRODUCTION_DEPLOYMENT.md"
+"Homepage"       = "https://github.com/http418imateapot/ot-edge-runtime"
+"Bug Tracker"    = "https://github.com/http418imateapot/ot-edge-runtime/issues"
+"Changelog"      = "https://github.com/http418imateapot/ot-edge-runtime/blob/main/autoscale/CHANGELOG.md"
+"Security Policy"= "https://github.com/http418imateapot/ot-edge-runtime/blob/main/autoscale/SECURITY.md"
+"Documentation"  = "https://github.com/http418imateapot/ot-edge-runtime/blob/main/autoscale/docs/PRODUCTION_DEPLOYMENT.md"
 
 # ---------------------------------------------------------------------------
 # Setuptools: treat adjust.py and decoder.py as top-level modules (no package

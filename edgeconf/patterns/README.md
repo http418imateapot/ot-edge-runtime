@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/http418imateapot/robust-config-exchange/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/robust-config-exchange/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/http418imateapot/robust-config-exchange)](https://github.com/http418imateapot/robust-config-exchange/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../../LICENSE)
 
 ---
 

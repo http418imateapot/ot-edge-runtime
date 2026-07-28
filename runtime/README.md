@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/http418imateapot/runc-edge-api/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/runc-edge-api/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/http418imateapot/runc-edge-api)](https://github.com/http418imateapot/runc-edge-api/releases/latest)
-[![License: MIT](https://img.shields.io/github/license/http418imateapot/runc-edge-api)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
 
 ## 簡介

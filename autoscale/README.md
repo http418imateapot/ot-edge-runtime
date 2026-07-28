@@ -4,15 +4,15 @@
 [![Release Pipeline](https://github.com/http418imateapot/plc-ebpf-autoscaler/actions/workflows/release.yml/badge.svg)](https://github.com/http418imateapot/plc-ebpf-autoscaler/actions/workflows/release.yml)
 [![GitHub release](https://img.shields.io/github/v/release/http418imateapot/plc-ebpf-autoscaler)](https://github.com/http418imateapot/plc-ebpf-autoscaler/releases)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../LICENSE)
 
 ---
 
 ## 開源與商用定位
 
-本專案採 [MIT License](LICENSE)，可供商業使用、修改、散布與私有部署，但須保留授權聲明。正式產線導入請依 [Production deployment guide](docs/PRODUCTION_DEPLOYMENT.md) 完成 TLS、最小權限、容量、故障演練、rollout 與 rollback 檢核，並查閱 [Third-party notices](THIRD_PARTY_NOTICES.md)。
+本專案採 [Apache License 2.0](../LICENSE)，可供商業使用、修改、散布與私有部署，但須保留授權聲明。正式產線導入請依 [Production deployment guide](docs/PRODUCTION_DEPLOYMENT.md) 完成 TLS、最小權限、容量、故障演練、rollout 與 rollback 檢核，並查閱 [Third-party notices](THIRD_PARTY_NOTICES.md)。
 
-本專案是監控與資料管線元件，不是安全儀控、緊急停止或閉迴路機台控制元件，也不宣稱已取得 IEC 62443、IEC 61508、ISO 13849 或場域專屬認證。MIT 授權允許商用，不等同於提供保固、賠償、SLA 或免除導入單位的驗證責任。
+本專案是監控與資料管線元件，不是安全儀控、緊急停止或閉迴路機台控制元件，也不宣稱已取得 IEC 62443、IEC 61508、ISO 13849 或場域專屬認證。Apache-2.0 授權允許商用，不等同於提供保固、賠償、SLA 或免除導入單位的驗證責任。
 
 ---
 
@@ -37,7 +37,6 @@ plc-ebpf-autoscaler/
 ├── CHANGELOG.md                   # 版本異動紀錄
 ├── CONTRIBUTING.md                # 貢獻指南
 ├── SECURITY.md                    # 安全漏洞回報政策
-├── LICENSE                        # MIT License
 ├── pyproject.toml                 # 套件定義（PEP 517/518）
 ├── requirements.txt               # 鎖定版本依賴（pip install -r 用）
 ├── decoder.py                     # PLC 採集點位資料消化、解碼程式
@@ -223,7 +222,7 @@ journalctl -u plc-adjust -f -o json
 | [CHANGELOG.md](CHANGELOG.md) | 版本異動紀錄（Keep a Changelog 格式） |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 貢獻指南、開發環境設定 |
 | [SECURITY.md](SECURITY.md) | 安全漏洞回報政策 |
-| [LICENSE](LICENSE) | MIT License |
+| [LICENSE](../LICENSE) | Apache License 2.0（全 repo 共用） |
 | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | 執行期與開發依賴授權清單 |
 | [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md) | 正式產線部署、驗收與回復指南 |
 

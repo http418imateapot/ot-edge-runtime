@@ -1,6 +1,6 @@
 # Production deployment guide
 
-This guide defines the supported deployment profile for a Linux edge computer on a factory network. The MIT License permits commercial use, modification, redistribution, and private use subject to its notice requirements. It does not provide a warranty, indemnity, support SLA, or certification.
+This guide defines the supported deployment profile for a Linux edge computer on a factory network. The Apache License, Version 2.0 permits commercial use, modification, redistribution, and private use subject to its notice and attribution requirements. It does not provide a warranty, indemnity, support SLA, or certification.
 
 This service is an observability and data-pipeline component. Do not place it in a safety instrumented function, emergency-stop path, or direct closed-loop machinery control path. A site owner must complete its own cybersecurity, functional-safety, change-control, and acceptance process.
 

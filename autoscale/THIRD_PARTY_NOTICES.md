@@ -1,6 +1,6 @@
 # Third-party notices
 
-This repository is distributed under the MIT License. It depends on software that is distributed separately under its own license terms. No third-party source code is vendored in this repository.
+This repository is distributed under the Apache License, Version 2.0. It depends on software that is distributed separately under its own license terms. No third-party source code is vendored in this repository.
 
 ## Runtime dependencies
 
