@@ -1,0 +1,35 @@
+[Unit]
+Description=Robust Config Sync Daemon — watches config file and broadcasts D-Bus deltas
+Documentation=https://github.com/http418imateapot/robust-config-exchange
+After=dbus.service
+Requires=dbus.service
+
+[Service]
+Type=notify
+# Note on User=: The service runs as root by default for broad filesystem access.
+# For production deployments, create a dedicated system account and grant it
+# only the necessary permissions:
+#   sudo useradd --system --no-create-home robust-config
+#   sudo chown robust-config /etc/robust-config
+# Then change User= below to 'robust-config'.
+User=root
+ExecStart=/usr/local/bin/robust_config \
+    --config /etc/robust-config/config.conf \
+    --bus system \
+    --log-level info \
+    watch
+Restart=on-failure
+RestartSec=5s
+
+# Systemd watchdog: kill and restart if no WATCHDOG=1 ping within 30 s
+WatchdogSec=30s
+NotifyAccess=main
+
+# Hardening
+ProtectSystem=strict
+ReadWritePaths=/etc/robust-config
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

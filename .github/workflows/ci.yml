@@ -71,6 +71,19 @@ jobs:
       - name: Install build toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libdbus-1-dev
-      - name: Build (D-Bus back-end)
+          sudo apt-get install -y build-essential pkg-config libdbus-1-dev dbus
+      - name: Build (D-Bus transport adapter)
         run: make -C edgeconf/patterns
+      - name: Reject an unimplemented transport
+        # The Makefile must fail loudly rather than silently building the
+        # default adapter when an unknown IPC_BACKEND is requested.
+        run: |
+          if make -C edgeconf/patterns IPC_BACKEND=nosuchbus >/dev/null 2>&1; then
+            echo "expected IPC_BACKEND=nosuchbus to fail the build"; exit 1
+          fi
+          echo "unknown transport correctly rejected"
+      - name: Unit tests
+        run: make -C edgeconf/patterns test
+      - name: Integration test (write -> watch -> dashboard over D-Bus)
+        working-directory: edgeconf/patterns
+        run: dbus-run-session -- bash tests/test_integration.sh ./robust_config
