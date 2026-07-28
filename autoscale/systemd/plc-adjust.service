@@ -1,0 +1,56 @@
+[Unit]
+Description=PLC EdgeFlow eBPF Monitor and Decoder Adjuster
+Documentation=https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/docs/PRODUCTION_DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=plcmon
+Group=plcmon
+
+# EnvironmentFile allows site-specific overrides without changing this unit.
+EnvironmentFile=/etc/plc-edgeflow/adjust.env
+Environment=PLC_REQUIRE_SECURE_MQTT=true
+ExecStart=/opt/plc-edgeflow/venv/bin/plc-adjust
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+TimeoutStartSec=60
+WatchdogSec=30
+NotifyAccess=main
+LimitMEMLOCK=infinity
+LimitNOFILE=8192
+TasksMax=768
+
+CapabilityBoundingSet=CAP_BPF CAP_PERFMON
+AmbientCapabilities=CAP_BPF CAP_PERFMON
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+StateDirectory=plc-edgeflow
+StateDirectoryMode=0750
+ReadWritePaths=/sys/fs/bpf /sys/kernel/debug /sys/kernel/tracing
+UMask=0077
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=plc-adjust
+
+[Install]
+WantedBy=multi-user.target

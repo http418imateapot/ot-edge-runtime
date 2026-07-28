@@ -1,0 +1,46 @@
+[Unit]
+Description=PLC EdgeFlow Decoder for topic %i
+Documentation=https://github.com/http418imateapot/plc-ebpf-autoscaler/blob/main/docs/PRODUCTION_DEPLOYMENT.md
+After=network-online.target
+Wants=network-online.target
+BindsTo=plc-adjust.service
+
+[Service]
+Type=simple
+User=plcmon
+Group=plcmon
+
+EnvironmentFile=/etc/plc-edgeflow/adjust.env
+Environment=PLC_REQUIRE_SECURE_MQTT=true
+ExecStart=/opt/plc-edgeflow/venv/bin/plc-decoder --topic %I
+
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+StateDirectory=plc-edgeflow
+StateDirectoryMode=0750
+UMask=0077
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=plc-decoder@%i
+
+[Install]
+WantedBy=multi-user.target
