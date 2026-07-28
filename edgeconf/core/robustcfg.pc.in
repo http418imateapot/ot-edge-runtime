@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: robustcfg
+Description: Lightweight embedded Key-Value config store for Linux edge devices
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -lrobustcfg -lpthread
+Cflags: -I${includedir}
