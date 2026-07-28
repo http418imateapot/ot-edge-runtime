@@ -295,7 +295,7 @@ static int mode_watch(const options_t *opts, const char *config_path) {
 
         int triggered = 0;
         for (char *ptr = ev_buf; ptr < ev_buf + len; ) {
-            struct inotify_event *ev = (struct inotify_event *)ptr;
+            const struct inotify_event *ev = (const struct inotify_event *)ptr;
             if (ev->len > 0 &&
                 strncmp(ev->name, filename, strlen(filename)) == 0)
                 triggered = 1;

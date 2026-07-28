@@ -21,9 +21,11 @@
 本元件示範一套可在既有嵌入式開發模式下落地的工業級設計：
 
 * **原子寫入**：write-to-.tmp + `rename()`，讀者永遠看到完整且一致的設定檔。
+* **斷電持久性**：`rename()` 之前對暫存檔 `fsync()`、之後對父目錄 `fsync()`。`rename()` 只保證「對其他行程原子」，不保證「對斷電持久」——少了這兩個 `fsync`，rename 可能先落盤而資料還沒，開機就看到空的設定檔。
 * **跨程序互斥**：`.lock` 檔 + `flock(LOCK_EX)` 串接多程序的 read-modify-write cycle，防止覆蓋競態。
-* **Delta 廣播**：`inotify` 偵測變更後比對前後快照，每個變更 key 發送獨立事件。
+* **Delta 廣播**：`inotify` 偵測變更後比對前後快照，每個變更 key 發送獨立事件；**被刪除的 key 也會發出事件**，否則訂閱端會永遠保留已退役的值。
 * **傳輸中介層**：廣播管道是可抽換的 adapter，而非寫死的 D-Bus 相依（見下節）。
+* **來源可信**：常駐程式取得 well-known bus name，訂閱端以 `sender=` 過濾，本機其他行程無法偽造設定變更通知。
 * **可觀測性**：以 `syslog(3)` 取代 `printf`，支援 `--log-level` 及 `journald` 整合。
 * **Crash Handler**：僅使用 async-signal-safe 的 `write()` 與 `backtrace_symbols_fd()`。
 * **Systemd 整合**：提供 `.service` unit 及 watchdog（`sd_notify`）支援，無需依賴 libsystemd。
@@ -53,7 +55,7 @@
 |------|------|
 | `open` | 連線到 `address` 指定的端點（`address` 由 adapter 自行解讀，可為 NULL 表示預設值） |
 | `close` | 釋放 `open` 取得的資源；可重複呼叫，對未成功開啟的 channel 也安全 |
-| `publish` | 廣播一筆 key/value delta。**線格式由 adapter 自行決定** |
+| `publish` | 廣播一筆 key/value delta，含 `deleted` 旗標以區分「key 被刪除」與「值變成空字串」。**線格式由 adapter 自行決定** |
 | `subscribe` | 登記收到 delta 時要呼叫的 callback，不阻塞 |
 | `run` | 阻塞式派送迴圈，把收到的 delta 交給 callback |
 
@@ -81,10 +83,12 @@ make IPC_BACKEND=ubus
 該 adapter 把每筆 delta 包成一個字串參數的 D-Bus signal：
 
 ```json
-{"interface_version":1,"key":"sample_rate","value":"120"}
+{"interface_version":2,"key":"sample_rate","value":"120","deleted":false}
 ```
 
-`interface_version` 在 payload schema 變更時遞增，讓舊版訂閱者能偵測不相容而非誤讀欄位。key 與 value 皆經 JSON 跳脫，含引號或反斜線的值可以完整來回。此格式是 adapter 的內部細節，port 之上的程式碼看不到它。
+`interface_version` 在 payload schema 變更時遞增，讓舊版訂閱者能偵測不相容而非誤讀欄位（v1 沒有 `deleted` 欄位，也無從表達刪除）。key 與 value 皆經 JSON 跳脫，含引號或反斜線的值可以完整來回。此格式是 adapter 的內部細節，port 之上的程式碼看不到它。
+
+訊號以 well-known name `com.example.RobustConfig` 送出——`src/ipc_dbus.c` 在首次 publish 前呼叫 `dbus_bus_request_name()`，訂閱端則以 `sender='com.example.RobustConfig'` 過濾。兩者缺一，本機任何被允許發 signal 的行程都能偽造 `ConfigChanged`，而訂閱端會照單全收。`dbus/com.example.RobustConfig.conf` 這份 system bus ACL 只允許常駐程式的帳號擁有該名稱。
 
 ---
 
@@ -152,7 +156,7 @@ Usage: robust_config [options] <mode>
 
 Modes:
   write     Update one config key (requires --key and --value)
-  watch     Monitor config file and broadcast key/value deltas
+  watch     Monitor config file; broadcast key/value deltas and removals
   dashboard Receive config deltas and display them
   dump      Print current config to stdout
 
@@ -206,6 +210,7 @@ Options:
 ```
 ConfigChanged: key=sample_rate value=120
 ConfigChanged: key=threshold value=0.90
+ConfigChanged: key=legacy_mode removed (was on)
 ```
 
 輸出是傳輸中立的 key/value——不論底下是哪個 adapter，呈現格式都一致。

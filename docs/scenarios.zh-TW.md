@@ -121,10 +121,11 @@ make -C edgeconf/core test     # 含 test_fault_inject 與 test_concurrent
 
 **本專案的作法。** [`edgeconf/patterns/`](../edgeconf/patterns/) 是一個同步常駐程式，讓設定檔可以安全地被共享：
 
-- **原子寫入** — 先寫 `.tmp` 再 `rename()`，讀者永遠看不到寫到一半的檔案。
+- **原子且持久的寫入** — 先寫 `.tmp`、`fsync`、`rename()`，再對父目錄 `fsync`。單靠 rename 只能對其他讀者原子，擋不住斷電;那兩個 `fsync` 才是讓機器不會開機看到空設定檔的關鍵。
 - **跨程序互斥** — 用 `.lock` 檔搭配 `flock(LOCK_EX)`，把整個 read-modify-write cycle 包起來。
-- **Delta 廣播** — `inotify` 偵測變更後，常駐程式比對前後快照，**每個變更的 key 發送一個獨立事件**，讓監聽端在毫秒級反應，完全不需輪詢。
+- **Delta 廣播** — `inotify` 偵測變更後，常駐程式比對前後快照，**每個變更的 key 發送一個獨立事件**——**被刪除的 key 也會發出事件**，訂閱端才不會永遠抱著已退役的值。監聽端毫秒級反應，完全不需輪詢。
 - **可抽換的傳輸層** — 廣播走的是 `include/ipc_backend.h` 定義的 port。D-Bus 是隨附的參考 adapter；ubus 或 Unix socket 可以在常駐程式毫不知情的情況下加進來。
+- **來源可信** — 常駐程式擁有 well-known bus name，訂閱端以它過濾，本機非特權行程無法偽造設定變更。
 
 **操作範例。**
 
@@ -143,6 +144,12 @@ make -C edgeconf/core test     # 含 test_fault_inject 與 test_concurrent
 
 ```
 ConfigChanged: key=sample_rate value=120
+```
+
+若改為從檔案中刪掉那個 key，每個訂閱端也會被告知，而不是留著一個過期的值：
+
+```
+ConfigChanged: key=sample_rate removed (was 120)
 ```
 
 完整設計、傳輸層 contract,以及如何新增 adapter,見 [`edgeconf-patterns.md`](edgeconf-patterns.md)。

@@ -186,16 +186,21 @@ neither.
 **What this project does.** [`edgeconf/patterns/`](../edgeconf/patterns/) is a
 sync daemon that makes the config file safe to share:
 
-- **Atomic writes** — write to `.tmp`, then `rename()`, so a reader never sees a
-  partial file.
+- **Atomic writes, and durable ones** — write to `.tmp`, `fsync`, then
+  `rename()`, then `fsync` the directory. The rename alone is atomic against
+  other readers but not against power loss; the fsyncs are what stop the box
+  from booting to an empty config.
 - **Cross-process mutual exclusion** — a `.lock` file with `flock(LOCK_EX)`
   around the whole read-modify-write cycle.
 - **Delta broadcast** — `inotify` detects the change, the daemon diffs the
-  before/after snapshot and publishes one event *per changed key*, so a listener
-  reacts in milliseconds without polling.
+  before/after snapshot and publishes one event *per changed key* — including
+  keys that were deleted, so a subscriber stops serving a retired value instead
+  of keeping it forever. Listeners react in milliseconds without polling.
 - **A replaceable transport** — the broadcast goes through the port in
   `include/ipc_backend.h`. D-Bus is the reference adapter that ships; ubus or a
   Unix socket can be added without the daemon knowing.
+- **Trustworthy origin** — the daemon owns a well-known bus name and subscribers
+  filter on it, so an unprivileged local process cannot forge a config change.
 
 **Worked example.**
 
@@ -214,6 +219,13 @@ Terminal 2 prints, within milliseconds and with no restart anywhere:
 
 ```
 ConfigChanged: key=sample_rate value=120
+```
+
+Delete that key from the file instead, and every subscriber is told so rather
+than being left with a stale value:
+
+```
+ConfigChanged: key=sample_rate removed (was 120)
 ```
 
 The full design, the transport contract and how to add an adapter are in
