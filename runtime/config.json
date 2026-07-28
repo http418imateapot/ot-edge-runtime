@@ -1,0 +1,97 @@
+{
+  "ociVersion": "1.0.2",
+  "process": {
+    "terminal": false,
+    "user": {
+      "uid": 0,
+      "gid": 0
+    },
+    "args": [
+      "./app/sample.sh"
+    ],
+    "env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "APP_ENV=production"
+    ],
+    "cwd": "/"
+  },
+  "root": {
+    "path": "container_rootfs",
+    "readonly": true
+  },
+  "mounts": [
+    {
+      "destination": "/proc",
+      "type": "proc",
+      "source": "proc"
+    },
+    {
+      "destination": "/dev",
+      "type": "tmpfs",
+      "source": "tmpfs",
+      "options": [
+        "nosuid",
+        "strictatime",
+        "mode=755",
+        "size=65536k"
+      ]
+    },
+    {
+      "destination": "/sys",
+      "type": "sysfs",
+      "source": "sysfs",
+      "options": [
+        "nosuid",
+        "noexec",
+        "nodev",
+        "ro"
+      ]
+    },
+    {
+      "destination": "/tmp",
+      "type": "tmpfs",
+      "source": "tmpfs",
+      "options": [
+        "nosuid",
+        "nodev",
+        "mode=1777",
+        "size=64m"
+      ]
+    }
+  ],
+  "linux": {
+    "uidMappings": [
+      {
+        "hostID": 100000,
+        "containerID": 0,
+        "size": 65536
+      }
+    ],
+    "gidMappings": [
+      {
+        "hostID": 100000,
+        "containerID": 0,
+        "size": 65536
+      }
+    ],
+    "resources": {
+      "memory": {
+        "limit": 134217728
+      },
+      "cpu": {
+        "shares": 512
+      }
+    },
+    "namespaces": [
+      {
+        "type": "pid"
+      },
+      {
+        "type": "mount"
+      },
+      {
+        "type": "user"
+      }
+    ]
+  }
+}

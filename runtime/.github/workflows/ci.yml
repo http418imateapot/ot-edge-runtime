@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  python-syntax:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Python syntax (py_compile)
+        run: python -m compileall -q .
+
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package with dev dependencies
+        run: pip install -e .[dev]
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  shellcheck:
+    name: Shell Script Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: "."
+
+  json-validate:
+    name: JSON Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          find . -name "*.json" -not -path "./.git/*" | while read -r f; do
+            echo "Validating $f"
+            python3 -m json.tool "$f" > /dev/null || exit 1
+          done
+
+  sql-lint:
+    name: SQL Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find SQL files
+        id: find-sql
+        run: |
+          SQL_COUNT=$(find . -name "*.sql" -not -path "./.git/*" | wc -l | tr -d ' ')
+          echo "count=$SQL_COUNT" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        if: steps.find-sql.outputs.count != '0'
+        with:
+          python-version: "3.12"
+
+      - name: Install sqlfluff
+        if: steps.find-sql.outputs.count != '0'
+        run: pip install sqlfluff
+
+      - name: Lint SQL files
+        if: steps.find-sql.outputs.count != '0'
+        run: |
+          find . -name "*.sql" -not -path "./.git/*" | \
+            xargs sqlfluff lint --dialect ansi --templater raw
