@@ -24,6 +24,17 @@ English version: [README.md](README.md)
 cgroups 做隔離、以帶認證的 REST API 驅動、依核心層流量訊號調整資料路徑的實例
 數量，並把設定放在能承受突然斷電的儲存引擎上。
 
+## 工廠情境
+
+本工具組源自四個廠區現場的實際情境。每個情境的完整說明——症狀、為何常見作法不合用、本專案改用什麼方式，以及操作範例——收錄於 [`docs/scenarios.zh-TW.md`](docs/scenarios.zh-TW.md)。
+
+| 情境 | 實際出的問題 | 對應元件 |
+|------|--------------|----------|
+| 高頻量測時採集端塞車 | 串列埠緩衝區塞滿、點位遺失。它在 historian 上只呈現為資料空隙而非告警，且只在最快的配方下發生。 | [`autoscale/`](autoscale/) |
+| 某個工作負載餓死了真正重要的那個 | 上傳程式的重試風暴吃光 CPU 與記憶體，直到採集路徑錯過時限。沒有程式崩潰，所以沒有告警。 | [`runtime/`](runtime/) |
+| 寫入設定時遇上斷電 | 機器開回來時設定檔被截斷——或更糟，用一份解析到一半的設定啟動，以微妙錯誤的方式運作。 | [`edgeconf/core/`](edgeconf/core/) |
+| 新設定必須立刻生效且不能重啟 | 為了一個數字重啟五個程式，代表採集在生產中出現空隙。 | [`edgeconf/patterns/`](edgeconf/patterns/) |
+
 ## 內容組成
 
 | 目錄 | 語言 | 職責 |
@@ -31,7 +42,7 @@ cgroups 做隔離、以帶認證的 REST API 驅動、依核心層流量訊號�
 | [`runtime/`](runtime/) | Python | 管理 Linux 原生 `runc` 容器與其 cgroup 限制的認證 REST API。 |
 | [`autoscale/`](autoscale/) | Python | 以 eBPF 監控 PLC 串列埠採集流量，並動態調整 MQTT 消化程式實例數與訂閱策略。 |
 | [`edgeconf/core/`](edgeconf/core/) | C | 嵌入式二進位 Key-Value 設定引擎——填補「SQLite 太重、純文字檔太脆」之間的空隙。 |
-| [`edgeconf/patterns/`](edgeconf/patterns/) | C | 以 config 檔做訊息交換的 POSIX 應用容錯範例（D-Bus / ubus 後端）。 |
+| [`edgeconf/patterns/`](edgeconf/patterns/) | C | 讓多個 POSIX 程式安全共享設定檔的同步常駐程式：原子寫入、跨程序互斥鎖，以及走可抽換傳輸層的 inotify delta 廣播。 |
 
 各元件的完整文件位於 [`docs/`](docs/)。
 
@@ -96,8 +107,8 @@ make -C edgeconf/core test   # ctest
 
 ```bash
 sudo apt-get install -y libdbus-1-dev
-make -C edgeconf/patterns                    # 預設 D-Bus 後端
-make -C edgeconf/patterns IPC_BACKEND=ubus   # OpenWrt / ubus 後端
+make -C edgeconf/patterns        # 以 D-Bus adapter 建置（預設）
+make -C edgeconf/patterns test   # 單元測試，不需任何 bus
 ```
 
 ## 四元件的關係
@@ -109,8 +120,8 @@ make -C edgeconf/patterns IPC_BACKEND=ubus   # OpenWrt / ubus 後端
    程式實例，並請求 runtime 執行擴縮。
 3. `edgeconf/core/` 保存前兩者所依賴的設定與門檻值，並確保在會無預警斷電的
    快閃儲存媒體上不致毀損。
-4. `edgeconf/patterns/` 記錄 `edgeconf/core/` 設計脈絡所源自的容錯設定交換模式；
-   對於既有、已用 config 檔當作訊息通道的 POSIX 應用，它本身仍有獨立價值。
+4. `edgeconf/patterns/` 把設定的變更同時分發給每一個程式，不需重啟；而且走的是
+   可抽換的傳輸層，因此同一支常駐程式既適用 D-Bus 發行版，也適用 OpenWrt/uClinux 裝置。
 
 採用其中一個元件，並不強制採用其餘三個。
 

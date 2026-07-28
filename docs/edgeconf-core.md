@@ -247,5 +247,5 @@ cmake --build build --parallel
 
 ## License
 
-Apache License 2.0 — 詳見 repo 根目錄的 [LICENSE](../LICENSE) 與 [NOTICE](../../NOTICE)
+Apache License 2.0 — 詳見 repo 根目錄的 [LICENSE](../LICENSE) 與 [NOTICE](../NOTICE)
 

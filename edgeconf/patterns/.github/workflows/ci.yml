@@ -1,32 +1,84 @@
-name: Build
+name: CI
 
 on:
   push:
     branches: ["**"]
-    tags-ignore: ["v*"]   # release.yml handles tag builds
   pull_request:
     branches: ["**"]
 
+# Least-privilege token: jobs only need to read repository contents.
+permissions:
+  contents: read
+
 jobs:
-  build:
+  # -------------------------------------------------------------------------
+  # Build + static analysis + unit tests (native x86-64)
+  # -------------------------------------------------------------------------
+  build-and-test:
+    name: Build, analyse and test (x86-64)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y build-essential pkg-config libdbus-1-dev cppcheck
+          sudo apt-get update -q
+          sudo apt-get install -y -q \
+            build-essential pkg-config libdbus-1-dev \
+            cppcheck dbus
 
-      - name: Compile (D-Bus backend)
-        run: make IPC_BACKEND=dbus
+      - name: Build
+        run: make
 
-      - name: Static analysis (cppcheck)
+      - name: cppcheck static analysis
         run: |
-          cppcheck --error-exitcode=1 \
-                   --enable=warning,portability \
-                   --suppress=missingIncludeSystem \
-                   -I include \
-                   src/robust_config.c src/ipc_dbus.c src/ipc_ubus.c
+          cppcheck --enable=all --error-exitcode=1 \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedFunction \
+            src/
+
+      - name: Unit tests (no D-Bus required)
+        run: make test
+
+      - name: Integration test (session D-Bus)
+        run: |
+          export $(dbus-launch --sh-syntax)
+          bash tests/test_integration.sh ./robust_config
+          kill "${DBUS_SESSION_BUS_PID:-}" 2>/dev/null || true
+
+  # -------------------------------------------------------------------------
+  # Cross-compile for aarch64 (ARM64 embedded targets)
+  # -------------------------------------------------------------------------
+  cross-compile-aarch64:
+    name: Cross-compile (aarch64)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cross-compile toolchain and libraries
+        run: |
+          sudo apt-get update -q
+          sudo dpkg --add-architecture arm64
+          sudo sed -i 's|^deb \(.*\)|deb [arch=amd64] \1|' /etc/apt/sources.list
+          sudo bash -c "cat >> /etc/apt/sources.list <<'EOF'
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $(lsb_release -cs) main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports $(lsb_release -cs)-updates main restricted universe multiverse
+          EOF"
+          sudo apt-get update -q
+          sudo apt-get install -y -q \
+            gcc-aarch64-linux-gnu \
+            pkg-config \
+            libdbus-1-dev:arm64
+
+      - name: Cross-compile for aarch64
+        run: |
+          export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+          export PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig
+          make CC=aarch64-linux-gnu-gcc
+
+      - name: Verify ELF architecture
+        run: |
+          file robust_config
+          file robust_config | grep -q "ARM aarch64"
