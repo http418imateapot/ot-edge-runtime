@@ -7,7 +7,7 @@ name = "plc-ebpf-autoscaler"
 version = "1.0.0"
 description = "eBPF-based PLC serial-port traffic monitor that dynamically scales MQTT decoder processes on Linux SBCs"
 readme = "README.md"
-license = "Apache-2.0"
+license = "MIT"
 authors = [{ name = "Tinker" }]
 requires-python = ">=3.10"
 keywords = ["plc", "ebpf", "mqtt", "autoscaler", "industrial", "iot"]

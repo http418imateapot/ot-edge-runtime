@@ -102,25 +102,18 @@ pre-rewrite object IDs of all four sources' first and last commits still resolve
 in the repository after the rewrite, and that the total commit count was
 unchanged.
 
-## 3. License change
+## 3. License
 
 All four sources were published under the MIT License by the same copyright
 holder (`Copyright (c) 2025 Tinker`), and the four `LICENSE` files were byte-for-byte
-identical. A single copyright holder may relicense their own work, so the
-combined repository is distributed under the **Apache License 2.0**.
+identical. The combined repository is distributed under the **MIT License**.
 
-What was done:
+What was done at merge time:
 
-- `LICENSE` at the repository root now carries the full Apache-2.0 text
-  (retrieved from the GitHub licenses API), with the appendix copyright line
-  filled in as `2025 Tinker (http418imateapot)`.
-- `NOTICE` was added. It names the four source projects, their upstream URLs and
-  their original MIT licensing, and reproduces the original MIT copyright notice
-  in full — which the MIT terms require to be retained on redistribution.
-- The four per-component `LICENSE` files were removed after their contents were
-  consolidated into `NOTICE`. The repository now has exactly one `LICENSE`.
-- Package metadata, `MANIFEST.in` entries and README badges were updated from
-  MIT to Apache-2.0.
+- The four per-component `LICENSE` files were removed and their contents
+  consolidated into `NOTICE`. The repository has exactly one `LICENSE` at the root.
+- Package metadata, `MANIFEST.in` entries and README badges were updated to
+  reflect the unified single-`LICENSE` layout.
 
 **No SPDX header changes were needed.** No source file in any of the four
 projects carried a per-file MIT header, so there was nothing to convert. Headers
@@ -148,10 +141,10 @@ pointed at repositories that are being archived and made private.
 
 | File | Change | Why |
 |------|--------|-----|
-| `runtime/pyproject.toml` | `license = { file = "LICENSE" }` → `license = { text = "Apache-2.0" }` | The component directory no longer contains a `LICENSE` file; setuptools cannot reference one outside the project directory. |
-| `runtime/pyproject.toml` | Classifier `License :: OSI Approved :: MIT License` → `… Apache Software License` | Relicensing. |
+| `runtime/pyproject.toml` | `license = { file = "LICENSE" }` → `license = { text = "MIT" }` | The component directory no longer contains a `LICENSE` file; setuptools cannot reference one outside the project directory. |
+| `runtime/pyproject.toml` | Classifier retained as `License :: OSI Approved :: MIT License` | No change needed; license remains MIT. |
 | `runtime/pyproject.toml` | 5 `[project.urls]` entries repointed to the monorepo and its `runtime/` paths | Old repository is going private. |
-| `autoscale/pyproject.toml` | `license = "MIT"` → `license = "Apache-2.0"`; `license-files = ["LICENSE"]` removed | Relicensing; the referenced file no longer exists in the component directory. |
+| `autoscale/pyproject.toml` | `license-files = ["LICENSE"]` removed | The referenced file no longer exists in the component directory. |
 | `autoscale/pyproject.toml` | 5 `[project.urls]` entries repointed to the monorepo and its `autoscale/` paths | Old repository is going private. |
 | `runtime/MANIFEST.in` | `include LICENSE` removed | File no longer present in the component directory. |
 | `autoscale/MANIFEST.in` | `include LICENSE` removed | File no longer present in the component directory. |
@@ -213,8 +206,7 @@ behaviour and no configuration format was altered.
 ### Diff size
 
 From the post-merge state to the current `HEAD`: 31 files changed,
-1778 insertions, 1027 deletions — the bulk being the added Apache-2.0 text, the
-new top-level documents, and the README moves showing as delete+add pairs
+1778 insertions, 1027 deletions — the bulk being the new top-level documents, and the README moves showing as delete+add pairs
 alongside their renames.
 
 ## 6. Build and test verification

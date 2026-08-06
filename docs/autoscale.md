@@ -3,15 +3,15 @@
 > Component documentation for `autoscale/` (originally the standalone `plc-ebpf-autoscaler` repository). Source lives in [`autoscale/`](../autoscale/); see the [monorepo README](../README.md) for how the components fit together.
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 
 ---
 
 ## 開源與商用定位
 
-本專案採 [Apache License 2.0](../LICENSE)，可供商業使用、修改、散布與私有部署，但須保留授權聲明。正式產線導入請依 [Production deployment guide](../autoscale/docs/PRODUCTION_DEPLOYMENT.md) 完成 TLS、最小權限、容量、故障演練、rollout 與 rollback 檢核，並查閱 [Third-party notices](../autoscale/THIRD_PARTY_NOTICES.md)。
+本專案採 [MIT License](../LICENSE)，可供商業使用、修改、散布與私有部署，但須保留授權聲明。正式產線導入請依 [Production deployment guide](../autoscale/docs/PRODUCTION_DEPLOYMENT.md) 完成 TLS、最小權限、容量、故障演練、rollout 與 rollback 檢核，並查閱 [Third-party notices](../autoscale/THIRD_PARTY_NOTICES.md)。
 
-本專案是監控與資料管線元件，不是安全儀控、緊急停止或閉迴路機台控制元件，也不宣稱已取得 IEC 62443、IEC 61508、ISO 13849 或場域專屬認證。Apache-2.0 授權允許商用，不等同於提供保固、賠償、SLA 或免除導入單位的驗證責任。
+本專案是監控與資料管線元件，不是安全儀控、緊急停止或閉迴路機台控制元件，也不宣稱已取得 IEC 62443、IEC 61508、ISO 13849 或場域專屬認證。MIT License 允許商用，不等同於提供保固、賠償、SLA 或免除導入單位的驗證責任。
 
 ---
 
@@ -221,7 +221,7 @@ journalctl -u plc-adjust -f -o json
 | [CHANGELOG.md](../autoscale/CHANGELOG.md) | 版本異動紀錄（Keep a Changelog 格式） |
 | [CONTRIBUTING.md](../autoscale/CONTRIBUTING.md) | 貢獻指南、開發環境設定 |
 | [SECURITY.md](../autoscale/SECURITY.md) | 安全漏洞回報政策 |
-| [LICENSE](../LICENSE) | Apache License 2.0（全 repo 共用） |
+| [LICENSE](../LICENSE) | MIT License（全 repo 共用） |
 | [THIRD_PARTY_NOTICES.md](../autoscale/THIRD_PARTY_NOTICES.md) | 執行期與開發依賴授權清單 |
 | [docs/PRODUCTION_DEPLOYMENT.md](../autoscale/docs/PRODUCTION_DEPLOYMENT.md) | 正式產線部署、驗收與回復指南 |
 

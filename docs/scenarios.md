@@ -259,7 +259,7 @@ design, not a verified end-to-end pipeline.
 - **Not a safety system.** Nothing here is certified against IEC 62443,
   IEC 61508 or ISO 13849. It is a monitoring and data-path toolkit, not
   safety-instrumented control, emergency stop, or closed-loop machine control.
-  Apache-2.0 grants no warranty and no indemnity; validating a deployment
+  The MIT License grants no warranty and no indemnity; validating a deployment
   remains the integrator's responsibility.
 - **Not an orchestrator.** One node, no scheduler, no cluster.
 - **Not portable beyond Linux**, and in places kernel-version sensitive.

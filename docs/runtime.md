@@ -2,7 +2,7 @@
 
 > Component documentation for `runtime/` (originally the standalone `runc-edge-api` repository). Source lives in [`runtime/`](../runtime/); see the [monorepo README](../README.md) for how the components fit together.
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
 
 ## 簡介

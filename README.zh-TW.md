@@ -1,7 +1,7 @@
 # ot-edge-runtime
 
 [![CI](https://github.com/http418imateapot/ot-edge-runtime/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/ot-edge-runtime/actions/workflows/ci.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **工業單板電腦 (SBC) 上的 OT 邊緣工作負載容器執行與監管工具組。**
 
@@ -130,7 +130,7 @@ make -C edgeconf/patterns test   # 單元測試，不需任何 bus
 - **不是編排器。** 僅支援單一節點，沒有排程器、叢集成員管理、overlay 網路或
   映像檔 registry。
 - **未取得安全認證。** 本專案未通過 IEC 62443、IEC 61508 或 ISO 13849 認證。
-  Apache-2.0 不提供保固與賠償，導入驗證仍屬系統整合方的責任。
+  MIT License 不提供保固與賠償，導入驗證仍屬系統整合方的責任。
 - **僅支援 Linux**，且部分功能對核心版本敏感——尤其是 `autoscale/` 的 eBPF 探針。
 - **尚未整合為單一專案。** 本次合併保留了四套獨立的建置、測試與版本編號，沒有
   共用的發版流程，也沒有跨元件整合測試；根目錄的 `.github/workflows/ci.yml`
@@ -154,7 +154,4 @@ make -C edgeconf/patterns test   # 單元測試，不需任何 bus
 
 ## 授權
 
-Apache License 2.0——詳見 [`LICENSE`](LICENSE)。
-
-四個來源專案原以 MIT License 發布，版權屬同一持有者。依 MIT 條款要求，原始版權
-聲明保留於 [`NOTICE`](NOTICE)。
+MIT License——詳見 [`LICENSE`](LICENSE)。
