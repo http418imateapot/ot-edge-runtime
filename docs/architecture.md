@@ -79,7 +79,7 @@ graph TB
 - Not a Kubernetes distribution, and not a replacement for one. There is no
   scheduler, no multi-node membership, and no cluster networking.
 - Not a safety-instrumented system. Nothing here is certified for IEC 62443,
-  IEC 61508 or ISO 13849, and the Apache-2.0 license grants no warranty.
+  IEC 61508 or ISO 13849, and the MIT License grants no warranty.
 - Components are **independently deployable**: nothing forces you to adopt all
   four. The coupling shown above is a recommended composition, not a hard
   dependency.

@@ -1,7 +1,7 @@
 # ot-edge-runtime
 
 [![CI](https://github.com/http418imateapot/ot-edge-runtime/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/ot-edge-runtime/actions/workflows/ci.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **A container runtime and supervision toolkit for OT edge workloads on industrial single-board computers.**
 
@@ -143,7 +143,7 @@ Adopting one component does not require adopting the others.
 - **Not an orchestrator.** Single node only. No scheduler, no cluster
   membership, no overlay networking, no image registry.
 - **Not safety-rated.** Nothing here is certified against IEC 62443, IEC 61508
-  or ISO 13849. Apache-2.0 grants no warranty and no indemnity; validating a
+  or ISO 13849. The MIT License grants no warranty and no indemnity; validating a
   deployment remains the integrator's responsibility.
 - **Linux only**, and in places kernel-version sensitive — the eBPF probe in
   `autoscale/` in particular.
@@ -173,8 +173,4 @@ records exactly how the merge was done and every change that was applied.
 
 ## License
 
-Apache License 2.0 — see [`LICENSE`](LICENSE).
-
-The four source projects were originally released under the MIT License by the
-same copyright holder. Their original copyright notices are retained in
-[`NOTICE`](NOTICE), as the MIT terms require.
+MIT License — see [`LICENSE`](LICENSE).

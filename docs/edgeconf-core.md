@@ -2,7 +2,7 @@
 
 > Component documentation for `edgeconf/core/` (originally the standalone `robust-binary-config` repository). Source lives in [`edgeconf/core/`](../edgeconf/core/); see the [monorepo README](../README.md) for how the components fit together.
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 
 **適用 Linux 邊緣裝置的輕量嵌入式 Key-Value 設定引擎**
 
@@ -247,5 +247,5 @@ cmake --build build --parallel
 
 ## License
 
-Apache License 2.0 — 詳見 repo 根目錄的 [LICENSE](../LICENSE) 與 [NOTICE](../NOTICE)
+MIT License — 詳見 repo 根目錄的 [LICENSE](../LICENSE)
 

@@ -10,5 +10,5 @@ history is preserved here.
 
 - Full component documentation: [`docs/runtime.md`](../docs/runtime.md)
 - Monorepo overview and quick start: [`README.md`](../README.md)
-- License: Apache-2.0 — see [`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE)
+- License: MIT — see [`LICENSE`](../LICENSE)
 - Repository: https://github.com/http418imateapot/ot-edge-runtime

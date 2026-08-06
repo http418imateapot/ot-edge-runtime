@@ -2,7 +2,7 @@
 
 > Component documentation for `edgeconf/patterns/` (originally the standalone `robust-config-exchange` repository). Source lives in [`edgeconf/patterns/`](../edgeconf/patterns/); see the [monorepo README](../README.md) for how the components fit together.
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 
 ---
 

@@ -14,7 +14,7 @@ history is preserved here.
 - Full component documentation: [`docs/edgeconf-patterns.md`](../../docs/edgeconf-patterns.md)
 - Factory scenarios this addresses: [`docs/scenarios.md`](../../docs/scenarios.md)
 - Monorepo overview and quick start: [`README.md`](../../README.md)
-- License: Apache-2.0 — see [`LICENSE`](../../LICENSE) and [`NOTICE`](../../NOTICE)
+- License: MIT — see [`LICENSE`](../../LICENSE)
 - Repository: https://github.com/http418imateapot/ot-edge-runtime
 
 ```bash
